@@ -47,7 +47,7 @@ pnpm build
 
 推送到 `main` 会自动运行 [`.github/workflows/pages.yml`](.github/workflows/pages.yml)：安装依赖 → `pnpm test` → `pnpm build` → 把 `dist/` 作为 Pages 产物发布。也可以在 Actions 页面手动触发 `Deploy to GitHub Pages`。
 
-首次使用需要在仓库 **Settings → Pages** 把 **Source** 设为 **GitHub Actions**。
+首次使用需要在仓库 **Settings → Pages** 把 **Source** 设为 **GitHub Actions**。没开启之前工作流会在 `Configure Pages` 步骤报 `Get Pages site failed`；开启后到 Actions 页面重跑一次 `Deploy to GitHub Pages` 即可发布。
 
 发布地址：https://dezhishen.github.io/gothere/ 。发布的是单文件版本（样式、脚本、关卡全部内联），所以放在 `/<repo>/` 子路径下也不需要改配置；`project.md`、源码和测试产物都不会发布。
 
