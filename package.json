@@ -1,0 +1,18 @@
+{
+  "name": "gothere",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "A lighthearted, data-driven puzzle about getting there, no matter what",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node scripts/build.mjs",
+    "share": "node scripts/share.mjs",
+    "test:share": "node scripts/check-shared.mjs",
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:coverage": "node --experimental-test-coverage --test --test-coverage-include=src/core/*.js --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=80 tests/*.test.mjs",
+    "test:e2e": "node scripts/browser-check.mjs"
+  }
+}
