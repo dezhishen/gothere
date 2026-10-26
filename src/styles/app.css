@@ -1,0 +1,448 @@
+/**
+ * Tailwind CSS v4 入口。
+ * - 设计令牌集中在 @theme，生成 bg-paper / text-ink / font-serif 等工具类。
+ * - 组件类保留原有语义类名，内部用 @apply 组合工具类，便于后续逐步改成 HTML 里的直接 utility。
+ * - 不引入 preflight：项目自带一套轻量 reset（见 @layer base），避免既有像素级设计被改写。
+ */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-paper: #f7f7ef;
+  --color-ink: #2e4339;
+  --color-muted: #7f897b;
+  --color-green: #3c624b;
+  --color-line: #dde2d5;
+  --color-soft: #edf0e4;
+  --color-gold: #ad9867;
+
+  --font-sans: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  --font-serif: Georgia, "Songti SC", "SimSun", serif;
+}
+
+@layer base {
+  :root { color-scheme: light; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+  button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; border: 0; background: none; }
+  button:disabled { cursor: default; opacity: .42; }
+  a { color: inherit; text-decoration: none; }
+  button, a { transition: background .15s, color .15s, box-shadow .15s; }
+
+  button:focus-visible, a:focus-visible, textarea:focus-visible {
+    outline: 3px solid #c0934f;
+    outline-offset: 4px;
+  }
+
+  [hidden] { display: none !important; }
+}
+
+@layer components {
+  .topbar {
+    @apply mx-auto flex h-[91px] max-w-[1360px] items-center justify-between border-b border-line px-[52px];
+  }
+  .brand { @apply flex items-center gap-[10px]; }
+  .brand > svg { @apply size-[35px] text-green; }
+  .brand > span { @apply flex items-center font-serif text-[28px] tracking-[-1.4px]; }
+  .brand-cn {
+    @apply ml-[17px] border-l border-[#cdd4c7] pl-[17px] tracking-[2px] text-[#667662];
+    font: 12px var(--font-sans);
+  }
+  .topbar nav { @apply flex items-center gap-[34px] text-[12px]; }
+  .nav-active { @apply flex h-[91px] items-center border-b-2 border-green font-semibold; }
+  .nav-link {
+    @apply px-0 py-2 text-[#7d8879] hover:text-green hover:underline hover:underline-offset-[5px];
+  }
+  .text-button:hover { @apply text-green underline underline-offset-[5px]; }
+  .nav-link span { @apply ml-[6px]; }
+  .version { @apply flex items-center gap-[7px] text-[9px] tracking-[1.15px] text-[#7f8c76]; }
+  .version i { @apply size-[6px] rounded-full bg-[#8d9f77]; }
+  .version > span {
+    @apply ml-[5px] rounded-[5px] border border-[#dce1d2] px-[5px] py-[3px] text-[10px] tracking-normal;
+  }
+  .page { @apply mx-auto max-w-[1256px] px-6; }
+  .intro { @apply flex items-center justify-between px-[5px] pt-[55px] pb-[44px]; }
+  .eyebrow {
+    @apply m-0 mb-5 flex items-center gap-2 text-[10px] font-semibold tracking-[2px] text-[#87917c];
+  }
+  .eyebrow > span {
+    @apply inline-block size-[6px] rotate-45 border border-[#899879];
+  }
+  h1 { @apply m-0 text-[46px] leading-[1.5] font-medium tracking-[2px]; }
+  .title-mark { @apply relative z-0 whitespace-nowrap; }
+  .title-mark::after {
+    content: "";
+    position: absolute;
+    inset-inline: auto;
+    z-index: -1;
+    bottom: 4px;
+    left: -4px;
+    width: 92%;
+    height: 11px;
+    border-radius: 50%;
+    background: #dce4cb;
+    transform: rotate(-3deg);
+  }
+  .intro-note { @apply relative mr-[28px] max-w-[370px] pt-5 pr-[26px]; }
+  .intro-note p:first-of-type { @apply m-0 mb-[13px] text-[15px] font-medium; }
+  .intro-note p:nth-of-type(2) { @apply m-0 text-[12px] leading-[2.1] text-[#858d7c]; }
+  .handwritten {
+    @apply mt-5 block -rotate-3 font-serif text-[18px] text-[#9ca58c] italic;
+  }
+  .note-star { @apply absolute top-0 -right-[40px] size-[51px] text-[#9caa83]; }
+
+  .level-tabs { @apply mb-[17px] flex gap-[9px]; }
+  .level-tab {
+    @apply relative flex min-w-[200px] items-center gap-[11px] rounded-[11px] border border-transparent pt-[11px] pr-[21px] pb-[11px] pl-[15px] text-left;
+  }
+  .level-tab .tab-number { @apply font-serif text-[21px] text-[#a4ab97] italic; }
+  .level-tab .tab-copy { @apply flex flex-col gap-1; }
+  .tab-title { @apply text-[12px] font-semibold; }
+  .tab-subtitle { @apply text-[9px] tracking-[1.1px] text-[#9ba48f]; }
+  .level-tab:hover { @apply bg-soft; }
+  .level-tab[aria-selected="true"] { @apply border-[#d3ddc8] bg-[#e8eddf]; }
+  .level-tab[aria-selected="true"] .tab-number { @apply text-green; }
+  .level-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #6c8b58;
+  }
+  .tab-check { @apply ml-[5px] text-[11px] text-[#6d8759]; }
+
+  .game-shell {
+    @apply overflow-hidden rounded-[19px] border border-[#d9e0d0] bg-[#fbfcf6] shadow-[0_14px_40px_-28px_#3b513b40];
+  }
+  .viewport { @apply relative aspect-[1200/640] overflow-hidden bg-[#e6eddd]; }
+  canvas { @apply block h-full w-full; }
+  .scene-heading { @apply pointer-events-none absolute top-[30px] left-[34px]; }
+  .scene-kicker { @apply text-[8px] tracking-[1.7px] text-[#8b987b]; }
+  .scene-heading h2 { @apply my-2 text-[20px] font-medium tracking-[2px] text-[#536847]; }
+  .scene-tag {
+    @apply absolute top-[30px] right-[31px] flex items-center gap-[7px] rounded-[20px] border border-[#c7d2b460] bg-[#f8fae735] px-3 py-[7px] text-[10px] text-[#7e8e6b];
+  }
+  .scene-dot { @apply size-[5px] rounded-full bg-[#93a778]; }
+  .stage-note {
+    @apply pointer-events-none absolute bottom-[22px] left-[34px] m-0 rounded-[20px] border border-[#f4f7e87a] bg-[#f7f9eea6] px-[14px] py-[9px] text-[11px] tracking-[.5px] text-[#516b49];
+  }
+  .stage-note span { @apply pr-[7px] text-[#93a474]; }
+  .hotspots { @apply pointer-events-none absolute inset-0; }
+  .hotspot {
+    @apply pointer-events-auto absolute flex h-8 min-w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-[6px] rounded-[50px] border border-[#809069] bg-[#fcfbee] px-[10px] py-0 font-sans text-[12px] font-semibold text-[#61794d] shadow-[0_0_0_5px_#f7f8e64d,0_3px_10px_#34513d22];
+  }
+  .hotspot::before {
+    content: "";
+    position: absolute;
+    top: 33px;
+    left: 50%;
+    width: 1px;
+    height: 18px;
+    background: #8b9a70;
+  }
+  .hotspot:hover:not(:disabled) {
+    @apply bg-[#46653e] text-white shadow-[0_0_0_6px_#e1e8cb80];
+  }
+  .hotspot-label {
+    @apply max-w-0 overflow-hidden text-[10px] font-normal whitespace-nowrap transition-[max-width] duration-200;
+  }
+  .hotspot:hover .hotspot-label, .hotspot:focus-visible .hotspot-label { @apply max-w-[100px]; }
+  .hotspot.active { @apply bg-[#dce8ca] text-[#4b673c]; }
+  .hotspot:disabled { @apply opacity-[.55]; }
+
+  .result-panel {
+    @apply absolute top-[44%] left-1/2 z-[3] w-[330px] max-w-[90%] rounded-[20px] border border-white bg-[#fcfcf1f5] px-[25px] py-6 text-center shadow-[0_15px_70px_#243e3633] animate-[appear_.25s_ease-out];
+    transform: translate(-50%, -50%);
+  }
+  .result-symbol { @apply font-serif text-[40px] text-[#a48f53]; }
+  .result-panel h3 { @apply mt-2 mb-[10px] text-[23px] font-medium; }
+  .result-panel p { @apply mt-0 mb-[21px] text-[12px] leading-[1.9] text-[#85907a]; }
+  .result-panel .button { @apply mx-auto; }
+
+  .game-controls {
+    @apply flex min-h-[78px] items-center justify-between px-[25px] pt-[15px] pb-[13px];
+  }
+  .transport { @apply flex items-center gap-[9px]; }
+  .button {
+    @apply inline-flex min-h-[42px] items-center justify-center gap-3 rounded-[9px] px-5 py-[11px] text-[12px] font-medium;
+  }
+  .primary { @apply border border-green bg-green text-[#f8faec]; }
+  .primary:hover:not(:disabled) { @apply bg-[#2e4d3a] shadow-[0_3px_8px_#3e624b26]; }
+  .primary span:first-child { @apply text-[10px]; }
+  .secondary { @apply min-h-[39px] border border-[#dde4d4] bg-[#eff2e8] text-[11px]; }
+  .secondary:hover { @apply bg-[#e4ebda]; }
+  .icon-button {
+    @apply inline-flex h-[39px] min-w-[39px] items-center justify-center rounded-lg text-[25px] text-[#839176];
+  }
+  .icon-button:hover:not(:disabled) { @apply bg-[#edf1e5]; }
+  .control-divider { @apply mx-1 h-[21px] w-px bg-[#e0e5d7]; }
+  .step-button { @apply min-w-[31px] font-sans text-[14px]; }
+  .speed-button { @apply h-9 min-w-[39px] rounded-[7px] text-[12px] text-[#8a947c]; }
+  .speed-button:hover { @apply bg-[#edf1e5]; }
+  .replay-button { @apply px-2 py-[10px] text-[11px] text-[#89957d]; }
+  .replay-button span { @apply mr-1 align-[-1px] text-[17px]; }
+  .status { @apply flex items-center gap-[7px] text-[11px] text-[#8b967e]; }
+  .status-dot { @apply size-[6px] rounded-full bg-[#a4b18a]; }
+  .status-dot.running { @apply bg-[#789b5b] shadow-[0_0_0_3px_#9fb9861c]; }
+  .status-dot.lost { @apply bg-[#b78d70]; }
+  .status-dot.won { @apply bg-[#6f9453]; }
+  .clock {
+    @apply ml-[10px] border-l border-[#e1e5d9] pl-[15px] text-[12px] tracking-[1px] tabular-nums;
+  }
+  .progress-row {
+    @apply flex items-center gap-[14px] px-[27px] pb-[19px] text-[9px] tracking-[.8px] text-[#9aa38d];
+  }
+  .progress-track { @apply h-[3px] flex-1 overflow-hidden rounded-[3px] bg-[#e7ecdf]; }
+  .progress-track > div {
+    @apply h-full w-0 rounded-[3px] bg-[#99ad7e] transition-[width] duration-200 ease-linear;
+  }
+  #progress-label { @apply min-w-[26px] text-right tabular-nums; }
+
+  .below-game {
+    @apply grid grid-cols-[1.55fr_1fr] gap-[38px] px-[5px] pt-[31px] pb-[26px];
+  }
+  .section-heading { @apply flex items-center justify-between gap-[10px]; }
+  .section-heading h2 { @apply m-0 text-[13px] font-medium; }
+  .text-button { @apply px-0 py-[5px] text-[10px] text-[#919b85]; }
+  .text-button span { @apply ml-[5px]; }
+  .level-description { @apply mx-0 mt-[10px] mb-[19px] text-[11px] leading-[1.9] text-[#8a947e]; }
+  .how-to { @apply flex gap-[25px]; }
+  .how-to > div { @apply flex items-start gap-[9px]; }
+  .step-number { @apply pt-px font-serif text-[19px] text-[#a7b291] italic; }
+  .how-to p { @apply m-0 flex flex-col gap-[6px]; }
+  .how-to strong { @apply text-[11px] font-medium text-[#697b5e]; }
+  .how-to p > span { @apply text-[9px] text-[#9aa38d]; }
+  .mechanism-actions { @apply mt-5 flex flex-wrap gap-[7px]; }
+  .mechanism-action {
+    @apply flex items-center gap-[7px] rounded-[6px] border border-[#dce3d2] px-[10px] py-[6px] text-[10px] text-[#6b7f5d];
+  }
+  .mechanism-action:hover:not(:disabled) { @apply bg-[#e7eddd]; }
+  .mechanism-action span:first-child { @apply font-serif italic; }
+  .hint-text { @apply rounded-lg bg-[#ecefdf] p-3 text-[11px] leading-[1.9] text-[#6f7c5f]; }
+  .journal { @apply border-l border-line pl-[30px]; }
+  .journal h2 > span { @apply mr-1 text-[17px] text-[#99a37e]; }
+  .journal-label { @apply text-[8px] tracking-[1.3px] text-[#a5ad98]; }
+  .journal ol { @apply m-0 mt-[14px] flex list-none flex-col gap-[11px] p-0; }
+  .journal li { @apply flex gap-3 text-[10px] leading-[1.6] text-[#8a967e]; }
+  .journal li time { @apply shrink-0 text-[9px] text-[#a4ad96] tabular-nums; }
+  .journal li.empty-event { @apply pt-[9px] text-[11px] text-[#a7ae9c]; }
+  .footer {
+    @apply flex items-center justify-between border-t border-line px-[5px] pt-[19px] pb-[26px] text-[10px] text-[#a0a893];
+  }
+  .footer-flag { @apply ml-3 inline-block align-[-2px] text-[16px] text-[#929e7c]; }
+  .footer > div { @apply flex items-center gap-[22px]; }
+  .keyboard-hints { @apply flex items-center gap-[6px] text-[9px] text-[#a6ae9c]; }
+  kbd {
+    @apply rounded-[4px] border border-[#dce2d2] px-[5px] py-[2px] text-[#9ca78e];
+    font: 9px var(--font-sans);
+  }
+  kbd:not(:first-child) { @apply ml-[7px]; }
+
+  dialog {
+    @apply w-[780px] max-w-[calc(100%-28px)] max-h-[90vh] rounded-[18px] border border-[#dbe2d0] bg-paper p-[26px] text-ink shadow-[0_20px_80px_#1c302c40];
+  }
+  dialog::backdrop { background: #26392f70; backdrop-filter: blur(5px); }
+  .dialog-heading { @apply flex items-center justify-between; }
+  .dialog-heading h2 { @apply m-0 text-[23px] font-medium; }
+  .dialog-heading .eyebrow { @apply mb-[9px] text-[8px]; }
+  .dialog-intro { @apply my-5 text-[12px] leading-[1.9] text-[#839175]; }
+  .editor-label { @apply mb-[9px] flex justify-between text-[11px] text-[#829071]; }
+  .editor-label span { @apply text-[10px] text-[#a1aa96]; }
+  textarea {
+    @apply h-[43vh] min-h-[220px] w-full resize-y rounded-[9px] border border-[#dce3d1] bg-[#eff2e7] p-4 text-[#4c6647];
+    font: 11px/1.7 Consolas, "Courier New", monospace;
+    tab-size: 2;
+  }
+  .dialog-actions { @apply mt-[15px] flex justify-between gap-3; }
+  .dialog-actions > div { @apply flex gap-2; }
+  .data-error {
+    @apply rounded-[6px] bg-[#f4e9dd] p-[11px] text-[11px] leading-[1.8] whitespace-pre-line text-[#926549];
+  }
+  .toast {
+    @apply fixed bottom-[26px] left-1/2 z-10 max-w-[90%] -translate-x-1/2 rounded-[10px] bg-[#344e3df0] px-5 py-3 text-center text-[12px] text-[#f6f8ee] shadow-[0_5px_30px_#33443320];
+  }
+  #project-content {
+    @apply mt-5 mb-0 font-sans text-[12px] leading-[1.9] text-[#6a7c60] whitespace-pre-wrap [overflow-wrap:anywhere];
+  }
+
+  @keyframes appear {
+    from { opacity: 0; translate: 0 9px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  @media (min-width: 1600px) {
+    .page { @apply max-w-[1320px]; }
+    .topbar { @apply max-w-[1424px]; }
+    .intro { @apply pt-[65px] pb-[49px]; }
+  }
+
+  @media (max-width: 900px) {
+    .version { @apply hidden; }
+    .topbar { @apply h-[76px] px-[28px]; }
+    .nav-active { @apply h-[76px]; }
+    .intro { @apply pt-[36px] pb-[34px]; }
+    h1 { @apply text-[39px]; }
+    .intro-note { @apply mr-[15px] max-w-[290px]; }
+    .intro-note p:first-of-type { @apply text-[13px]; }
+    .note-star { @apply -right-[17px] w-[38px]; }
+    .handwritten { @apply text-[16px]; }
+    .level-tab { @apply flex-1 gap-2 px-[15px] py-[11px] min-w-0; }
+    .level-tab[aria-selected="true"]::after { right: 10px; }
+    .tab-subtitle { @apply text-[8px] tracking-[.5px]; }
+    .below-game { @apply grid-cols-[1.35fr_1fr] gap-[22px]; }
+    .how-to { @apply flex-wrap gap-[15px]; }
+    .how-to p > span { @apply text-[9px]; }
+    .journal { @apply pl-5; }
+    .replay-button { @apply text-[10px]; }
+    .scene-heading { @apply top-[23px] left-[25px]; }
+    .scene-tag { @apply top-[23px] right-[23px]; }
+    .stage-note { @apply bottom-[17px] left-[25px] text-[10px]; }
+    .scene-heading h2 { @apply text-[18px]; }
+  }
+
+  @media (max-width: 600px) {
+    .topbar { @apply h-[67px] px-[19px]; }
+    .brand > span { @apply text-[25px]; }
+    .brand > svg { @apply size-[30px]; }
+    .brand-cn { @apply ml-[11px] pl-[11px] text-[10px] tracking-[1px]; }
+    .topbar nav { @apply gap-[15px] text-[10px]; }
+    .nav-active { @apply h-[67px]; }
+    .nav-link { @apply text-[10px]; }
+    .page { @apply px-[15px]; }
+    .intro { @apply items-end px-[2px] pt-[29px] pb-[27px]; }
+    .eyebrow { @apply mb-3 text-[7px] tracking-[1.2px]; }
+    h1 { @apply text-[31px] leading-[1.55] tracking-[1px]; }
+    .title-mark::after { height: 8px; }
+    .intro-note { @apply m-0 mr-[3px] mb-[5px] ml-[10px] max-w-[145px] p-0; }
+    .intro-note p:first-of-type { @apply mb-[7px] text-[10px] leading-[1.9]; }
+    .intro-note p:nth-of-type(2) { @apply text-[9px] leading-[1.9]; }
+    .intro-note p:nth-of-type(2) br { @apply hidden; }
+    .handwritten { @apply mt-3 text-[12px] leading-[1.5]; }
+    .note-star { @apply hidden; }
+    .level-tabs { @apply mb-[11px] gap-1; }
+    .level-tab { @apply gap-[7px] rounded-[9px] px-2 py-[10px]; }
+    .tab-title { @apply text-[10px] whitespace-nowrap; }
+    .level-tab .tab-number { @apply text-[18px]; }
+    .tab-subtitle { @apply text-[6px] tracking-[.4px]; }
+    .level-tab[aria-selected="true"]::after { @apply hidden; }
+    .game-shell { @apply rounded-[13px]; }
+    .scene-heading { @apply top-[14px] left-4; }
+    .scene-kicker { @apply text-[5px] tracking-[.9px]; }
+    .scene-heading h2 { @apply mt-[5px] text-[13px] tracking-[1px]; }
+    .scene-tag { @apply top-[14px] right-[13px] gap-1 px-[7px] py-1 text-[7px]; }
+    .scene-dot { @apply size-1; }
+    .stage-note { @apply bottom-[10px] left-3 px-[9px] py-[6px] text-[8px] tracking-normal; }
+    .hotspot {
+      @apply h-[30px] min-w-[30px] px-[9px] py-0 text-[11px] shadow-[0_0_0_3px_#f7f8e64d,0_3px_10px_#34513d22];
+    }
+    .hotspot::before { top: 30px; height: 8px; }
+    .hotspot-label { @apply hidden; }
+    .game-controls { @apply min-h-[65px] flex-wrap gap-[5px] px-3 py-[11px]; }
+    .transport { @apply gap-[3px]; }
+    .button { @apply min-h-[38px] gap-2 px-[13px] py-[10px] text-[11px]; }
+    .icon-button { @apply h-[35px] w-[33px] min-w-[33px] text-[23px]; }
+    .step-button { @apply w-6 min-w-6 text-[11px]; }
+    .speed-button { @apply h-[33px] min-w-[29px] text-[11px]; }
+    .control-divider { @apply mx-[2px]; }
+    .replay-button { @apply px-1 py-2 text-[9px]; }
+    .replay-button span { @apply mr-px text-[14px]; }
+    .status { @apply gap-[5px] text-[9px]; }
+    .status-dot { @apply size-[5px]; }
+    .clock { @apply ml-[2px] pl-[7px] text-[10px] tracking-normal; }
+    .progress-row { @apply gap-[9px] px-[14px] pb-3 text-[8px]; }
+    .below-game { @apply grid-cols-1 gap-[23px] px-[2px] pt-6 pb-5; }
+    .section-heading h2 { @apply text-[12px]; }
+    .text-button { @apply text-[9px]; }
+    .level-description { @apply mb-[17px] text-[10px]; }
+    .how-to { @apply justify-between gap-[10px]; }
+    .how-to > div { @apply gap-[7px]; }
+    .step-number { @apply text-[17px]; }
+    .how-to strong { @apply text-[10px]; }
+    .how-to p > span { @apply text-[8px]; }
+    .journal { @apply border-l-0 border-t border-line px-0 pt-[19px]; }
+    .journal ol { @apply mt-3 gap-2; }
+    .mechanism-actions { @apply mt-[17px]; }
+    .journal-label { @apply text-[7px]; }
+    .footer { @apply px-[2px] pt-4 pb-[22px] text-[9px]; }
+    .keyboard-hints { @apply hidden; }
+    .footer > div { @apply gap-0; }
+    .result-panel { @apply top-1/2 w-[270px] rounded-[14px] px-5 py-[15px]; }
+    .result-symbol { @apply text-[28px]; }
+    .result-panel h3 { @apply my-1 mt-1 mb-[7px] text-[19px]; }
+    .result-panel p { @apply mb-[13px] text-[10px]; }
+    .result-panel .button { @apply min-h-[33px] px-3 py-2 text-[10px]; }
+    dialog { @apply rounded-[14px] p-[19px]; }
+    .dialog-heading h2 { @apply text-[21px]; }
+    .dialog-intro { @apply my-[15px] text-[10px]; }
+    .dialog-actions { @apply flex-wrap; }
+    .dialog-actions > div { @apply gap-[5px]; }
+    .dialog-actions .button { @apply px-[11px] py-[9px] text-[10px]; }
+    .dialog-actions > .primary { @apply ml-auto; }
+    textarea { @apply p-[10px] text-[10px]; }
+  }
+
+  @media (max-width: 380px) {
+    .brand-cn { @apply hidden; }
+    .topbar nav { @apply gap-[13px]; }
+    .intro-note { @apply max-w-[130px]; }
+    .intro-note p:first-of-type { @apply text-[9px]; }
+    h1 { @apply text-[28px]; }
+    .game-controls { @apply gap-2; }
+    .status { @apply ml-auto; }
+    .replay-button { @apply text-[8px]; }
+    .how-to p > span { @apply text-[7px]; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* 收尾的配色与品牌微调：保持原始顺序，避免与上面的断点规则打架。 */
+  .intro-note p:nth-of-type(2) { @apply text-[#6f7a66]; }
+  .level-description { @apply text-[#66765c]; }
+  .how-to p > span { @apply text-[#738168]; }
+  .journal li { @apply text-[#68785e]; }
+  .status { @apply text-[#68785e]; }
+  .text-button { @apply text-[#69785f]; }
+  .speed-button { @apply text-[#65765a]; }
+  .replay-button { @apply text-[#6a795f]; }
+  .scene-tag { @apply text-[#657950]; }
+
+  .brand > span { font: 600 19px var(--font-sans); letter-spacing: 1px; }
+  .brand-cn { font: 9px var(--font-sans); letter-spacing: 1.8px; }
+  .brand > svg { @apply text-[#58734d]; }
+  .intro-note { @apply max-w-[375px]; }
+  .title-mark::after { background: #e7d6b1; }
+  .scene-dot { @apply bg-[#b89b63]; }
+  .footer-flag { @apply text-[#b18c5e]; }
+
+  @media (max-width: 600px) {
+    .brand > span { @apply text-[14px] tracking-[.5px]; }
+    .brand-cn { @apply hidden; }
+    .brand > svg { @apply size-[27px]; }
+    .brand { @apply gap-[7px]; }
+    .intro-note { @apply max-w-[145px]; }
+    .topbar nav { @apply gap-3; }
+    .topbar { @apply px-[15px]; }
+  }
+
+  @media (max-width: 380px) {
+    .brand > span { @apply text-[12px]; }
+    .topbar nav { @apply gap-[9px]; }
+  }
+}

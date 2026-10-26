@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { makeServer } from '../server.mjs';
 import { levels } from '../src/levels.js';
 import { buildPortable } from './build.mjs';
+import { launchOptions } from './browser.mjs';
 
 await mkdir(new URL('../artifacts/', import.meta.url), { recursive: true });
 const artifact = (name) => new URL('../artifacts/' + name, import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
@@ -29,8 +29,7 @@ async function open(context, url = base) {
   return page;
 }
 try {
-  const installedEdge = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-  const launch = !existsSync(chromium.executablePath()) && existsSync(installedEdge) ? { channel: 'msedge' } : {};
+  const launch = launchOptions();
   browser = await chromium.launch({ headless: true, ...launch });
   const desktop = await browser.newContext({ viewport:{width:1440,height:1200}, reducedMotion:'reduce' });
   const page = await open(desktop);

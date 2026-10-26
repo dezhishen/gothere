@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { launchOptions } from './browser.mjs';
 
 const info=JSON.parse(await readFile(new URL('../artifacts/share.json',import.meta.url),'utf8'));
-const edge='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-const launch=!existsSync(chromium.executablePath())&&existsSync(edge)?{channel:'msedge'}:{};
+const launch=launchOptions();
 const browser=await chromium.launch({headless:true,...launch});
 try {
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});

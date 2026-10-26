@@ -3,11 +3,13 @@ import { resolve, dirname, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
+import { buildCss } from './css.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 /** Package this app's named ES modules into isolated scopes; reject unsupported module syntax. */
 export async function buildPortable() {
+  await buildCss({ quiet: true });
   const identifiers = new Map(), visiting = new Set(), chunks = [];
   async function moduleFor(file) {
     const filename = resolve(file);

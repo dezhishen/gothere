@@ -40,5 +40,5 @@ function stop(code=0) {
   preview.close(()=>{process.exitCode=code;});
 }
 tunnel.on('error',error=>{console.error('Cannot start SSH tunnel:',error.message);stop(1);});
-tunnel.on('close',code=>{console.log('Public preview disconnected. Run npm run share to reconnect.');stop(code??1);});
+tunnel.on('close',code=>{console.log('Public preview disconnected. Run pnpm share to reconnect.');stop(code??1);});
 process.on('SIGINT',()=>stop());process.on('SIGTERM',()=>stop());

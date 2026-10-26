@@ -12,6 +12,8 @@ test('builds a self-contained playable HTML without a local server', async () =>
   assert.ok(html.includes('<title>一定要到达那里</title>'));
   assert.ok(html.includes('id="portable-data"'));
   assert.ok(html.includes('function createSimulation'));
+  assert.ok(html.includes('--color-paper'), 'Tailwind design tokens are inlined');
+  assert.ok(html.includes('--font-serif'), 'Tailwind font tokens are inlined');
   assert.ok(!/<script[^>]+src=/i.test(html), 'scripts must be embedded');
   assert.ok(!/<link[^>]+rel="stylesheet"/i.test(html), 'styles must be embedded');
   assert.ok(!html.includes('src="/src/'));
