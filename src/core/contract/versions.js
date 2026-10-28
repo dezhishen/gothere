@@ -7,7 +7,7 @@ import { createType, listTypeDescriptors } from '../interpreters/factories/index
 
 export const SCHEMA_VERSION = 1;
 
-export const PLATFORM = Object.freeze({ name: 'gothere', version: '0.2.0' });
+export const PLATFORM = Object.freeze({ name: 'gothere', version: '0.1.0' });
 
 const positive = (value, fallback) => (Number.isInteger(value) && value > 0 ? value : fallback);
 

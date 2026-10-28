@@ -1,6 +1,6 @@
 {
   "name": "gothere",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "A lighthearted, data-driven puzzle about getting there, no matter what",

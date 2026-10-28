@@ -88,7 +88,7 @@ pnpm build:bin                          # → dist/gothere-linux-x64（约 144 M
 ## 发版：推 tag 即发布
 
 ```sh
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
 `.github/workflows/release.yml` 会先校验（tag 必须等于 `package.json` 的版本、跑测试

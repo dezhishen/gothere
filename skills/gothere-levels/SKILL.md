@@ -17,7 +17,7 @@ gothere 把「解析关卡」和「运行关卡」分开：关卡是纯 JSON，�
 | `gothere-cli` / `gothere-cli.exe` | 单二进制，自带运行时不依赖 node |
 | `gothere-cli.mjs` / `gothere-cli.cjs` | 同功能的单文件脚本，需要 node ≥ 26 |
 
-平台版本 0.2.0 · schemaVersion 1 · 内置关卡 6 张。
+平台版本 0.1.0 · schemaVersion 1 · 内置关卡 6 张。
 
 ## 第一件事：确认能跑
 

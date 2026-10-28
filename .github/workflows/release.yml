@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 要发布的 tag（形如 v0.2.0），必须与 package.json 的版本一致
+        description: 要发布的 tag（形如 v0.1.0），必须与 package.json 的版本一致
         required: true
 
 permissions:

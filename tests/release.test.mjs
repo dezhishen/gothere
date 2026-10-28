@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import { readFileSync } from 'node:fs';
 import { archiveName } from '../scripts/archive.mjs';
+import { PLATFORM } from '../src/core/contract/versions.js';
 import { buildSkill, buildSkillMarkdown, checkSkillFile } from '../scripts/build-skill.mjs';
 import { listTypes, describe } from '../src/core/contract/registry.js';
 import { binaryName } from '../scripts/build-binary.mjs';
@@ -57,4 +59,9 @@ test('the committed skills/<name>/SKILL.md is generated, so it never drifts', as
   const result = await checkSkillFile();
   assert.equal(result.path.endsWith('/skills/gothere-levels/SKILL.md'), true, '技能源文件要放在 skills/<name>/ 下');
   assert.ok(result.ok, 'skills/gothere-levels/SKILL.md 与 schema 不一致：请运行 `pnpm build:agent` 重新生成');
+});
+
+test('the platform version reported by the code matches package.json', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(PLATFORM.version, pkg.version, '改版本号时 package.json 与 contract/versions.js 要一起改');
 });
