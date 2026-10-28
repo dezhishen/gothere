@@ -100,8 +100,8 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 
 | 模块 | 职责 | 冻结导出 | 只允许依赖 |
 |---|---|---|---|
-| `src/editor/ui.js` | 面板、仓库、连线交互 | `createEditorUI(deps)` | app、contract |
-| `src/editor/model.js` | 草稿槽、撤销历史、投影缓存 | `createEditorStore(text)` | app、contract |
+| `src/features/editor/ui.js` | 面板、调色板、连线交互、画布拖动（**已实现**） | `createEditor({ canvas, draw, onPlay, onExit })` | contract、interpreter |
+| `src/features/editor/model.js` | 草稿不可变模型、撤销历史、校验归位（**已实现**） | `blankLevel`、`addEntity`、`patchEntity`、`createHistory`、`issues` | contract、interpreters/factories |
 | `src/editor/routing.js` | 直角折线与转接点 | `route(points)`、`hitTestWire(...)` | contract（纯几何） |
 | `src/editor/catalog.js` | 仓库条目视图模型 | `catalogItems(query, group)` | contract（由注册表派生） |
 | `src/render/registry.js` | 渲染策略注册与回退 | `createRenderers()`、`resolveRenderer(strategy)` | contract |
@@ -109,6 +109,22 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 | `src/game/session.js` | 试玩会话：rAF 累加器、输入队列、HUD 数据 | `createSession({ doc, renderer })` | app、kernel（经 app）、render |
 | `src/dsl/parse.js` · `serialize.js` | 文本 ↔ IR | `parse(text, { registry })`、`serialize(doc)` | contract |
 | `src/gen/index.js` | 因果结构 → 时空布置 → IR | `generate({ seed, params, generatorVersion })` | contract、app.validate、kernel（自检） |
+
+#### 编辑器的扩展契约（新增解析器不改界面）
+
+编辑器**不认识任何具体类型**：调色板、字段、下拉选项、声明槽全部由已注册工厂的
+`editor` 回调现算，聚合函数是 `interpreters/describeEditor(doc)`。
+
+| 回调 | 回答什么 | 缺省行为 |
+|---|---|---|
+| `editor.labels` / `accents` / `hints` | 类型的中文名、强调色、一句话说明 | 退回类型 id |
+| `editor.fields({ type, entity })` | 实体面板有哪些控件 | `entityFields()`：id/名称/x/宽度/初始状态 |
+| `editor.level(doc)` / `editor.platform(seg, i)` | 关卡级字段、地面段字段（地图类别） | 返回空数组 |
+| `editor.declarations(entity)` | 声明槽面板 | 由类型的槽默认值反推控件（`declarationEditor`） |
+
+因此新增一种机关/物品只需要改它的工厂文件：加 `types.<name>`（含 states 与
+slots）与 `editor.labels.<name>`；界面、校验、SKILL.md 全部自动跟随。新增一种
+**声明槽**才需要动能力文件与内核阶段（[C6](design.md#c6)：元素只声明，流程在内核）。
 
 ### 2.5 L3 shell
 

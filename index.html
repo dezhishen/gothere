@@ -15,7 +15,7 @@
       <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M10 34V6m1 2c9-7 12 8 23 0v16c-11 8-14-7-23 0" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="35" r="3" fill="currentColor"/></svg>
       <span>一定要到达那里<span class="brand-cn">GOTHERE</span></span>
     </a>
-    <nav aria-label="主导航"><span class="nav-active">游玩实验室</span><button class="nav-link" id="open-data">关卡数据 <span aria-hidden="true">↗</span></button></nav>
+    <nav aria-label="主导航"><span class="nav-active">游玩实验室</span><button class="nav-link" id="open-editor">关卡编辑器 <span aria-hidden="true">✎</span></button><button class="nav-link" id="open-data">关卡数据 <span aria-hidden="true">↗</span></button></nav>
     <span class="version"><i></i> FIRST LITTLE STEPS <span>v0.2</span></span>
   </header>
 
@@ -32,11 +32,30 @@
     <section aria-label="选择关卡" class="level-tabs" id="level-tabs"></section>
 
     <section class="game-shell" aria-label="赶路关卡">
+      <div class="editor-bar" id="editor-bar" hidden>
+        <div class="editor-bar-group">
+          <span class="editor-badge">编辑草稿</span>
+          <button class="button primary small" id="editor-play" type="button">试玩草稿</button>
+          <button class="button secondary small" id="editor-exit" type="button">退出编辑</button>
+        </div>
+        <div class="editor-bar-group">
+          <button class="icon-button small" id="editor-undo" type="button" aria-label="撤销">↶</button>
+          <button class="icon-button small" id="editor-redo" type="button" aria-label="重做">↷</button>
+          <button class="button secondary small" id="editor-export" type="button">导出 JSON</button>
+          <button class="button secondary small" id="editor-import" type="button">导入 JSON</button>
+          <button class="button secondary small" id="editor-save" type="button">存草稿</button>
+          <button class="button secondary small" id="editor-load" type="button">读草稿</button>
+          <button class="button secondary small" id="editor-fresh" type="button">清空</button>
+          <input type="file" id="editor-file" accept="application/json,.json" hidden>
+        </div>
+        <p class="editor-status" id="editor-status" role="status" aria-live="polite"></p>
+      </div>
       <div class="viewport" id="viewport">
         <canvas id="scene" width="1200" height="640" aria-label="赶路场景。请使用场景中的圆形机关按钮，或下方的操作按钮。"></canvas>
         <div class="scene-heading"><span class="scene-kicker">ONE VERY DETERMINED LITTLE JOURNEY</span><h2 id="scene-title">桥呢？桥呢！</h2></div>
         <div class="scene-tag"><span class="scene-dot"></span><span id="scene-tag-text">前方有点情况</span></div>
         <div class="hotspots" id="hotspots"></div>
+        <div class="edit-layer" id="edit-layer" hidden></div>
         <p class="stage-note" id="stage-note"><span aria-hidden="true">✦</span> 认准那里了。准备好就出发！</p>
         <div class="result-panel" id="result-panel" hidden>
           <span class="result-symbol" id="result-symbol" aria-hidden="true">⚑</span>
@@ -44,7 +63,8 @@
           <button class="button primary" id="result-action">下一段旅程 <span aria-hidden="true">→</span></button>
         </div>
       </div>
-      <div class="game-controls">
+      <div class="editor-palette" id="editor-palette" hidden></div>
+      <div class="game-controls" id="game-controls">
         <div class="transport">
           <button class="button primary" id="play" aria-label="出发！"><span id="play-icon" aria-hidden="true">▶</span><span id="play-label">出发！</span></button>
           <button class="icon-button" id="reset" aria-label="重新开始关卡" title="重来 · R">↻</button>
@@ -56,6 +76,7 @@
         <div class="status"><span id="status-dot" class="status-dot"></span><span id="status-text" role="status">准备出发</span><span class="clock" id="clock">00:00</span></div>
       </div>
       <div class="progress-row"><span>到达进度</span><div class="progress-track" role="progressbar" aria-label="到达进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div id="progress-fill"></div></div><span id="progress-label">0%</span></div>
+      <div class="editor-inspector" id="editor-inspector" hidden></div>
     </section>
 
     <section class="below-game">

@@ -213,6 +213,23 @@ pnpm build
 - 「需要一点提示？」显示本关的时序提示。
 - 「关卡数据」支持 JSON 编辑、文件导入、校验、加载、导出。加载无效数据不会替换当前关卡。
 
+## 关卡编辑器
+
+页面顶部的「关卡编辑器」进入可视化编辑模式，和试玩共用同一块画布。
+
+- 从调色板放置机关/物品，直接拖动画布上的方块定位；Inspector 里改名称、位置、
+  宽度、初始状态、标签与声明参数。
+- 「连线」把「点哪个机关」和「谁换什么状态」连起来，可加延迟；没有 if，条件写在
+  元素自己的声明里（`reacts.from` / `reacts.need` / `blocks.inState`）。
+- 撤销/重做（Ctrl/⌘+Z、Shift 重做）、删除键、浏览器草稿、「存草稿/读草稿」、
+  JSON 导入导出；校验错误会挂在出问题的元素上，红框标在画布上。
+- 「试玩草稿」用当前草稿开一局，随时回到编辑器继续改，草稿不会被试玩结果污染。
+
+**新增一种机关或物品不需要改编辑器**：调色板、字段、下拉选项、声明槽都由已注册
+工厂的 `editor` 回调现算（`src/core/interpreters/factories/editor.js`，
+聚合入口 `describeEditor(doc)`）。往工厂里加 `types.<name>` 与 `editor.labels.<name>`
+就够了，界面与 `pnpm skill` 生成的 SKILL.md 会自动跟上。
+
 ## 六张关卡
 
 1. 桥呢？桥呢！：开关改变木桥状态，验证点击和因果。
@@ -238,6 +255,8 @@ pnpm build
   moves / ground / lifts），每个文件只导出参数模板与所属阶段，**不含任何函数**；
   门禁会拦住想在元素里写行为代码的改动。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
+- `src/features/editor/`：可视化编辑器（`model.js` 是不可变草稿与撤销历史，
+  `ui.js` 只照着工厂给出的描述画面板）。
 - `src/core/interpreters/`：两层注册表。数据制品解释器固定 4 种（`level` / `bundle` /
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
   `item`），每类工厂按同一份接口产出自己的类型，注册只能落到已有类型上。

@@ -1,6 +1,7 @@
 // 内容工厂：物品。物品只说自己是什么：叫什么、带什么标签、能不能被拿、拿在手里会不会伤人。
 // 它不知道任何机关的存在——「谁需要这把钥匙」由机关声明、由角色视图回答。
 
+import { control, entityFields } from './editor.js';
 import { createFactory } from './factory.js';
 
 const state = (id, label) => Object.freeze({ id, label });
@@ -13,6 +14,17 @@ export function createItemFactory() {
     schema: {
       label: '物品',
       slots: ['tags', 'reacts', 'harms', 'carryable'],
+    },
+    editor: {
+      label: '物品',
+      accent: '#ad9867',
+      labels: { axe: '斧头', hammer: '锤子', key: '钥匙' },
+      hints: { axe: '拿在手里才不伤人', hammer: '拿着时可以点它', key: '带着就能开需要的门' },
+      accents: { key: '#c9a227', axe: '#8a7a5c' },
+      // 物品自己只说「我有什么标签」；谁需要它，由机关去声明。
+      fields: ({ type, entity }) => entityFields(type, entity, [
+        control('tags', '标签', { control: 'tags', value: (entity.tags ?? type.tags).join(' '), hint: '空格分隔，如 key yellow' }),
+      ]),
     },
     types: {
       axe: {

@@ -20,12 +20,14 @@ export async function buildPortable() {
   const safeData = JSON.stringify({ project }).replace(/</g, '\\u003c');
   const levelsData = JSON.stringify(levelData).replace(/</g, '\\u003c');
   const script = chunks.join('\n\n').replace(/<\/script/gi, '<\\/script');
+  // 一律用「函数型替换」：拼接进来的 CSS/JS 里只要出现 $& 或 $'，
+  // 字符串型替换就会把它们当成替换模式，产物会被悄悄改坏。
   const html = template
-    .replace('<link rel="stylesheet" href="/src/style.css">', '<style>\n' + css.replace(/^@charset[^;]+;\s*/, '') + '\n</style>')
-    .replace('href="/favicon.svg"', 'href="data:image/svg+xml,' + encodeURIComponent(icon) + '"')
-    .replace('id="open-project">项目路线', 'id="open-project">试玩说明')
-    .replace('id="project-title">项目路线', 'id="project-title">试玩说明')
-    .replace('<script type="module" src="/src/main.js"></script>',
+    .replace('<link rel="stylesheet" href="/src/style.css">', () => '<style>\n' + css.replace(/^@charset[^;]+;\s*/, '') + '\n</style>')
+    .replace('href="/favicon.svg"', () => 'href="data:image/svg+xml,' + encodeURIComponent(icon) + '"')
+    .replace('id="open-project">项目路线', () => 'id="open-project">试玩说明')
+    .replace('id="project-title">项目路线', () => 'id="project-title">试玩说明')
+    .replace('<script type="module" src="/src/main.js"></script>', () =>
       '<script id="portable-data" type="application/json">' + safeData + '</script>\n' +
       '<script id="levels-data" type="application/json">' + levelsData + '</script>\n' +
       '<script type="module">\n' + script + '\n</script>');

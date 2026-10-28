@@ -3,6 +3,7 @@
 // 地图不产出实体：电梯这种「带状态、可被规则驱动」的东西属于机关。
 
 import { LIMITS, WORLD } from '../../contract/constants.js';
+import { control } from './editor.js';
 import { createFactory } from './factory.js';
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -124,6 +125,22 @@ export function createMapFactory() {
       // 地图不产出实体：这些是关卡文档里地图自己那一段的字段。
       slots: [],
       sections: ['world', 'actor', 'goal', 'platforms', 'stairs'],
+    },
+    // 地图也参与编辑：关卡级字段与地面段都归它管，别的类别不关心这些。
+    editor: {
+      label: '地图',
+      accent: '#8fa07f',
+      level: (doc) => [
+        control('name', '关卡名', { value: doc.name }),
+        control('description', '说明', { value: doc.description }),
+        control('actor.x', '起点 x', { control: 'number', value: doc.actor.x, min: 25, max: 1175, step: 1 }),
+        control('actor.speed', '角色速度', { control: 'number', value: doc.actor.speed, min: LIMITS.minSpeed, max: LIMITS.maxSpeed, step: 1, hint: '单位/秒' }),
+        control('goal.x', '终点 x', { control: 'number', value: doc.goal.x, min: LIMITS.goalMinX, max: LIMITS.goalMaxX, step: 1, hint: '必须在起点右侧' }),
+      ],
+      platform: (segment, index) => [
+        control('x', '第 ' + (index + 1) + ' 段 x', { control: 'number', value: segment.x, min: 0, max: WORLD.width, step: 1 }),
+        control('width', '宽度', { control: 'number', value: segment.width, min: 8, max: WORLD.width, step: 1 }),
+      ],
     },
     parseSection: parseMapSection,
     terrain: mapTerrain,

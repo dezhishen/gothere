@@ -133,6 +133,53 @@ try {
   await page.locator('#close-project').click();
   console.log('PASS authoring: pause, single-step, hints, JSON validation, file import/export, custom map, project document');
 
+  // 编辑器：调色板与面板必须来自已注册工厂的回调，而不是页面里的硬编码。
+  await page.locator('#open-editor').click();
+  await page.locator('#editor-palette .palette-item').first().waitFor();
+  const paletteLabels = await page.locator('#editor-palette .palette-item').allTextContents();
+  check(paletteLabels.includes('门') && paletteLabels.includes('钥匙'), 'palette labels come from the factories');
+  const editorDoc = () => page.evaluate(() => window.gothere.editor().doc);
+  check(await page.evaluate(() => window.gothere.editor().editing), 'editor mode is on');
+  check((await editorDoc()).entities.length === 0, 'editor starts from a blank draft');
+
+  await page.locator('#editor-palette .palette-item', { hasText: '门' }).click();
+  await page.locator('#editor-palette .palette-item', { hasText: '开关' }).click();
+  let draft = await editorDoc();
+  check(draft.entities.length === 2, 'placing from the palette adds entities');
+  check(draft.entities[0].kind === 'gate' && draft.entities[1].kind === 'switch', 'palette places the chosen kind');
+  const beforeDrag = draft.entities[0].x;
+  const gateBox = page.locator('#edit-layer [data-entity="' + draft.entities[0].id + '"]');
+  const boxDescription = await gateBox.boundingBox();
+  await page.mouse.move(boxDescription.x + boxDescription.width / 2, boxDescription.y + boxDescription.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(boxDescription.x + boxDescription.width / 2 - 60, boxDescription.y + boxDescription.height / 2, { steps: 6 });
+  await page.mouse.up();
+  check((await editorDoc()).entities[0].x < beforeDrag, 'dragging on the canvas moves the entity');
+  await page.locator('#editor-undo').click();
+  check((await editorDoc()).entities[0].x === beforeDrag, 'undo restores the dragged position');
+  await page.locator('#editor-redo').click();
+
+  await page.locator('#editor-inspector').getByRole('button', { name: '+ 加一条连线' }).click();
+  draft = await editorDoc();
+  check(draft.rules.length === 1, 'a rule can be wired from the inspector');
+  check(draft.rules[0].on.source === 'switch-1', 'the rule source is an entity that accepts input');
+  check(await page.locator('#editor-status').textContent() !== '', 'editor reports its state');
+  await page.screenshot({ path: artifact('editor.png'), fullPage: true });
+
+  await page.locator('#editor-play').click();
+  await page.locator('#game-controls').waitFor();
+  check(!(await page.evaluate(() => window.gothere.editor().editing)), 'playing the draft leaves edit mode');
+  await page.locator('#speed').click(); await page.locator('#speed').click();
+  await page.getByRole('button', { name: '操作：开关 2', exact: true }).click();
+  await settle(page, 5000);
+  check(await status(page) === '终于到了', 'a draft built only in the editor can be won');
+  await page.locator('#open-editor').click();
+  check((await editorDoc()).entities.length === 2, 'returning to the editor keeps the draft');
+  await page.locator('#editor-save').click();
+  check(await page.evaluate(() => Boolean(localStorage.getItem('gothere.draft.v1'))), 'draft is stored in the browser');
+  await page.locator('#editor-exit').click();
+  console.log('PASS editor: factory-driven palette, drag, undo/redo, rule wiring, draft play, draft persistence');
+
   const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,reducedMotion:'reduce'});
   const phone=await open(mobile);
   check(await phone.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'mobile has no horizontal overflow');

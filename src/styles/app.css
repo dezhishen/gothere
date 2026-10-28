@@ -446,3 +446,79 @@
     .topbar nav { @apply gap-[9px]; }
   }
 }
+
+  /* ---- 关卡编辑器 ------------------------------------------------------- */
+  .editor-bar {
+    @apply flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#dbe2d2] bg-[#f4f6ea] px-[22px] py-[10px];
+  }
+  .editor-bar-group { @apply flex items-center gap-[7px]; }
+  .editor-badge {
+    @apply rounded-[5px] bg-[#3c624b] px-[8px] py-[3px] text-[9px] tracking-[1.2px] text-[#f4f7e8];
+  }
+  .button.small { @apply min-h-[30px] rounded-[7px] px-[11px] py-[6px] text-[11px]; }
+  .icon-button.small { @apply h-[30px] w-[30px] min-w-[30px] text-[17px]; }
+  .editor-status { @apply ml-auto text-[10px] text-[#7c8a70]; }
+  .editor-status[data-tone="good"] { @apply text-[#3c624b]; }
+  .editor-status[data-tone="bad"] { @apply text-[#a4543f]; }
+
+  .edit-layer { @apply pointer-events-none absolute inset-0; }
+  .edit-box {
+    @apply pointer-events-auto absolute flex cursor-grab items-end justify-center rounded-[4px] border border-dashed border-[#93a684]/70 bg-[#f8faf099];
+  }
+  .edit-box.selected { @apply border-solid border-[#3c624b] bg-[#3c624b1a] shadow-[0_0_0_3px_#3c624b26]; }
+  .edit-box.invalid { @apply border-solid border-[#b45a45] bg-[#b45a451a]; }
+  .edit-box.edit-actor { @apply cursor-default border-solid border-[#3c624b55] bg-transparent; }
+  .edit-box.edit-goal { @apply cursor-default border-solid border-[#ad986755] bg-transparent; }
+  .edit-box.edit-platform { @apply cursor-default border-solid border-[#c3cfb6] bg-[#dfe8d24d]; }
+  .edit-tag {
+    @apply pointer-events-none absolute -top-[15px] left-0 rounded-[3px] bg-[#3c624b] px-[4px] py-[1px] text-[8px] tracking-[.4px] text-[#f2f6e6];
+  }
+  .edit-actor .edit-tag { @apply bg-[#3c624b99]; }
+  .edit-goal .edit-tag { @apply bg-[#ad9867cc]; }
+  .edit-platform .edit-tag { @apply bg-[#8fa07fcc]; }
+
+  .editor-palette {
+    @apply flex flex-wrap items-start gap-x-4 gap-y-2 border-b border-[#e3e8db] bg-[#fafbf3] px-[22px] py-[9px];
+  }
+  .palette-group { @apply flex flex-wrap items-center gap-[5px]; }
+  .palette-label { @apply mr-[3px] text-[9px] tracking-[1px] text-[#8b9781]; }
+  .palette-item {
+    @apply rounded-[6px] border border-[#d3dcc7] bg-white px-[9px] py-[4px] text-[10px] text-[#536847];
+  }
+  .palette-item:hover { @apply border-[#3c624b] bg-[#f1f5e5]; }
+
+  .editor-inspector {
+    @apply grid gap-[14px] border-t border-[#e3e8db] bg-[#f8faf0] px-[22px] py-[16px] md:grid-cols-2;
+  }
+  .edit-card { @apply flex flex-col gap-[7px] rounded-[10px] border border-[#e0e7d5] bg-white p-[12px]; }
+  .edit-card-head { @apply flex items-center justify-between; }
+  .edit-card-title { @apply text-[11px] font-semibold tracking-[1px] text-[#4d6349]; }
+  .edit-empty { @apply text-[10px] leading-[1.7] text-[#8b9781]; }
+  .edit-field { @apply flex flex-col gap-[3px]; }
+  .edit-field-label { @apply text-[9px] tracking-[.6px] text-[#8b9781]; }
+  .edit-field-hint { @apply text-[9px] leading-[1.5] text-[#a3ae97]; }
+  .edit-declaration {
+    @apply flex flex-col gap-[6px] rounded-[7px] border border-dashed border-[#d6dfc9] bg-[#fafbf3] p-[8px];
+  }
+  .edit-declaration-title { @apply text-[9px] tracking-[.6px] text-[#6c7a62]; }
+  .edit-rule {
+    @apply grid grid-cols-[repeat(4,minmax(0,1fr))_auto] items-end gap-[6px] rounded-[7px] border border-dashed border-[#d6dfc9] bg-[#fafbf3] p-[8px];
+  }
+  .edit-input {
+    @apply w-full rounded-[6px] border border-[#cbd6c0] bg-white px-[7px] py-[5px] text-[11px] text-[#3c4f3c];
+  }
+  .edit-input:focus { @apply border-[#7c8f5a] outline-none; }
+  .edit-row { @apply grid grid-cols-[1fr_1fr_auto] items-end gap-[6px]; }
+  .edit-textarea {
+    @apply min-h-[110px] w-full rounded-[6px] border border-[#dde4d3] bg-[#fbfcf6] p-[7px] font-mono text-[10px] leading-[1.55] text-[#41523d];
+  }
+  .edit-textarea.tall { @apply min-h-[150px]; }
+  .edit-error { @apply text-[10px] text-[#a4543f]; }
+  .edit-error-list { @apply m-0 flex list-disc flex-col gap-[3px] pl-[15px] text-[10px] text-[#a4543f]; }
+  .button.danger, .text-button.danger { @apply text-[#a4543f]; }
+
+  @media (max-width: 720px) {
+    .editor-bar, .editor-palette { @apply px-3 py-[7px]; }
+    .editor-inspector { @apply px-3 py-[10px]; }
+    .edit-tag { @apply hidden; }
+  }
