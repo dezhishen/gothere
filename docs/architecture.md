@@ -118,7 +118,8 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 |---|---|---|
 | `src/shell/browser.js` | 浏览器启动：注入端口、挂载 editor 与 game | 取代现在的 `src/main.js` 顶部胶水 |
 | `src/shell/electron.js` | Electron bridge：存档路径、全屏、禁网 | 与 `desktop/main.cjs` 配合 |
-| `bin/gothere.mjs` | CLI：子命令 → `app.skills.invoke` | 输出与退出码遵循 [C15](design.md#c15) |
+| `src/app/cli.js` | CLI 产品逻辑：子命令 → `app.skills.invoke`，只用注入端口（不碰 process / fs），因此可打包 | 输出与退出码遵循 [C15](design.md#c15) |
+| `bin/gothere.mjs` | 源码树 shell：把 process 与文件系统接给 `app/cli.js` | 交付物是独立制品 `dist/gothere-cli.mjs`（单文件、只依赖 node 内置模块，内置关卡内联） |
 | `server.mjs` | 静态托管（GET/HEAD + CSP） | 不变 |
 | `scripts/*.mjs` | 构建、分享、桌面打包、验收 | `build.mjs` 增加内联 JSON 数据块 |
 
@@ -174,7 +175,9 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 <a id="tree"></a>
 
 ```text
-bin/gothere.mjs                  CLI 入口（子命令 → skills.invoke）
+bin/gothere.mjs                  CLI shell（源码树调试用）
+dist/gothere-cli.mjs             交付的 CLI 独立制品（单文件，内置关卡内联）
+src/app/cli.js                   CLI 产品逻辑（端口注入，可打包）
 src/
   core/
     contract/  registry.js versions.js validate.js migrate.js prng.js constants.js diff.js

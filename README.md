@@ -31,6 +31,21 @@ pnpm dev
 `lifts`）、`item`（标签 `tags`、可携带 `carryable`、伤害 `harms`、反应 `reacts`）。
 写错类别（比如给物品写 `blocks`）会在加载前被拒绝。
 
+CLI 是一个**独立制品**：`pnpm build:cli` 会把 `src/app/cli.js` 依赖的全部模块和
+内置关卡打成一个 `dist/gothere-cli.mjs`（约 137 KiB），除 node 内置模块外没有任何
+依赖。它可以直接复制走、单独运行，也可以当 bin 装：
+
+```sh
+pnpm build:cli                         # 产出 dist/gothere-cli.mjs
+node dist/gothere-cli.mjs --version     # 制品自带版本，不需要仓库
+cp dist/gothere-cli.mjs /tmp/ && cd /tmp && ./gothere-cli.mjs level list
+```
+
+源码树里改完逻辑，用 `pnpm cli`（跑制品，跑前自动重建）或 `pnpm cli:src`（直接跑
+源码，省一次构建）。**要接管道（`| jq`、脚本调用）请直接用
+`node dist/gothere-cli.mjs`**：`pnpm cli` 会额外打印 pnpm 自己的命令行，那是包管理器
+的输出，不是 CLI 的协议流。
+
 ```sh
 pnpm cli skills --json                  # 技能清单 + 解释器支持矩阵
 pnpm cli platform                       # 解释器与平台整体支持集
@@ -46,6 +61,10 @@ pnpm cli level diff first-bridge quiet-corner --json
 0 成功 / 2 用法错误 / 3 校验失败 / 4 模拟失败 / 5 内部错误。清单只列已实现的只读
 能力，写操作（如 `level.apply`）在实现之前不会出现。浏览器里可以用
 `window.gothere.platform()` 拿到同一份支持矩阵。
+
+制品与源码树入口的输出必须一致（`tests/cli-artifact.test.mjs` 逐条比对），并且会
+把制品单独复制到临时目录里跑一遍内置关卡，确保它在没有 `src/`、`levels/`、
+`node_modules/` 的地方也能工作。
 
 ## 手机与异地试玩
 
@@ -125,12 +144,17 @@ pnpm build
   `item`），每类工厂按同一份接口产出自己的类型，注册只能落到已有类型上。
 - `src/app/`：用例层、内容源端口、错误码与 Agent skill 清单。
 - `levels/*.level.json` + `levels/manifest.json`：关卡内容制品。
-- `bin/gothere.mjs`：创作侧 CLI（`pnpm cli`）。
+- `bin/gothere.mjs`：源码树上的 CLI shell（把 process / 文件系统接给 `src/app/cli.js`）；
+  交付用的是独立制品 `dist/gothere-cli.mjs`。
+- `src/app/cli.js`：CLI 产品逻辑（参数解析、输出格式、退出码），只用注入的端口，不碰
+  process 与文件系统，因此可以被单文件打包。
 - `src/styles/app.css`：Tailwind CSS v4 入口。设计令牌放在 `@theme`，组件类用 `@apply` 组合工具类；构建输出到 `src/style.css`（生成物，不入库）。
 - `src/scene.js`：Canvas 场景与原创程序绘制角色；未知类型走占位回退。
 - `src/main.js`：界面、输入、固定步长驱动和关卡数据面板。
 - `tests/`：契约、声明槽、解释器、用例、CLI、内容与 HTTP 测试。
 - `scripts/build.mjs`：无第三方运行时依赖的单文件打包，构建期校验并内联关卡。
+- `scripts/build-cli.mjs`：把 CLI 打成单文件独立制品（`dist/gothere-cli.mjs`）。
+- `scripts/bundle.mjs` / `scripts/content.mjs`：两条制品共用的模块打包器与内容读取。
 - `scripts/check-layers.mjs`：分层门禁（依赖只向下、声明槽必须是叶子模块且不含函数）。
 - `scripts/css.mjs`：调用 Tailwind CLI 编译样式；`scripts/dev.mjs` 同时跑样式监听与开发服务器。
 - `scripts/browser.mjs`：端到端脚本共用的 Chromium 选择逻辑。

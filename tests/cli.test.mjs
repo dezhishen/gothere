@@ -5,11 +5,16 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildCli } from '../scripts/build-cli.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+let artifact = null;
+
+// 这些用例跑的是**独立制品**，不是源码树上的入口：测的就是要交付的那个文件。
+test.before(async () => { artifact = (await buildCli()).path; });
 
 function cli(args) {
-  return spawnSync(process.execPath, ['bin/gothere.mjs', ...args], { cwd: root, encoding: 'utf8', windowsHide: true });
+  return spawnSync(process.execPath, [artifact, ...args], { cwd: root, encoding: 'utf8', windowsHide: true });
 }
 
 function json(result) {
