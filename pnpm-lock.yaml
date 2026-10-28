@@ -178,6 +178,9 @@ importers:
       playwright:
         specifier: ^1.64.1
         version: 1.64.1
+      postject:
+        specifier: 1.0.0-alpha.6
+        version: 1.0.0-alpha.6
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

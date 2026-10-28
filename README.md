@@ -66,23 +66,33 @@ pnpm cli level diff first-bridge quiet-corner --json
 把制品单独复制到临时目录里跑一遍内置关卡，确保它在没有 `src/`、`levels/`、
 `node_modules/` 的地方也能工作。
 
-## 单一可执行文件
+## 单一可执行文件（可跨平台构建）
 
 不装 Node 也能跑：用 Node 26 自带的 SEA（single executable application）把 CLI 嵌进
 node 本体，产出一个二进制。
 
 ```sh
-pnpm build:bin                          # → dist/gothere-linux-x64（约 144 MB）
-./dist/gothere-linux-x64 --version
-./dist/gothere-linux-x64 level simulate all-together --inputs '[{"tick":150,"source":"axe"},{"tick":200,"source":"guard"},{"tick":520,"source":"bridge-switch"},{"tick":800,"source":"lift-switch"}]'
+pnpm build:bin                              # 宿主平台
+node scripts/build-binary.mjs --target win32-x64     # 任何平台都能构建目标平台
+node scripts/build-release.mjs --target darwin-arm64  # 二进制 + 技能包 + 桌面客户端
 ```
 
-构建脚本会在空目录里跑一遍 `--version`、`level list`、`level simulate` 才算成功，
-所以产出的文件是自证可用的。三条硬约束：
+支持的目标：`linux-x64`、`linux-arm64`、`darwin-arm64`、`darwin-x64`、`win32-x64`。
 
-- **不能交叉编译**：SEA 拿当前运行的 node 二进制当底，每个平台各自构建一次；
-  产物名带平台，`gothere-<平台>-<架构>[.exe]`。
-- **体积 ≈ node 本体**（约 144 MB），所以它不进 npm 包，只在 Release 里发。
+**为什么能跨平台**：`node --build-sea` 只能用「当前运行的 node」当底，但 SEA 其实是
+两步——先生成一个**与平台无关的 blob**，再把 blob 注入到 node 本体。所以这里改成：
+用官方 `nodejs.org/dist` 的**目标平台 node** 当底，用 `postject` 注入我们生成的 blob。
+macOS 注入后签名必然失效（Apple Silicon 上不签名不给跑），于是在非 Mac 宿主上用
+[rcodesign](https://github.com/indygreg/apple-platform-rs) 做 ad-hoc 签名——**一台
+ubuntu 就能产出全部四个平台的制品，不需要 macOS / Windows runner**。
+
+自检分两级：目标平台就是宿主时（比如在 Linux 上构建 linux-x64）会真的跑一遍
+`--version` / `level list` / `level simulate`；跨平台构建时做结构校验（PE / ELF / Mach-O
+魔数与 CPU 类型 + SEA sentinel 是否注入成功）。
+
+其余两条硬约束：
+
+- **体积 ≈ node 本体**（约 100–150 MB），所以它不进 npm 包，只在 Release 里发。
 - macOS 下载后可能被 Gatekeeper 拦一次：`xattr -d com.apple.quarantine ./gothere-darwin-arm64`。
 
 ## 发版：推 tag 即发布
@@ -94,12 +104,14 @@ git tag v0.1.0 && git push origin v0.1.0
 `.github/workflows/release.yml` 会先校验（tag 必须等于 `package.json` 的版本、跑测试
 与分层门禁），再在三个平台各自构建单二进制，最后把下面这些挂到 GitHub Release：
 
+目标平台：`linux-x64`、`linux-arm64`、`win32-x64`、`darwin-arm64`。
+
 | 文件 | 说明 |
 |---|---|
-| `gothere-agent-linux-x64.tar.gz`<br>`gothere-agent-darwin-arm64.tar.gz`<br>`gothere-agent-win32-x64.zip` | **Agent 技能包**：`SKILL.md` + 该平台的单二进制（解压即用，不依赖 node） |
-| `gothere-agent-node.tar.gz` / `.zip` | 同一个技能包，但不带二进制：`SKILL.md` + 单文件 CLI 脚本（需要 node ≥ 26） |
-| `gothere-desktop-linux-x64.tar.gz`<br>`gothere-desktop-darwin-arm64.tar.gz`<br>`gothere-desktop-win32-x64.zip` | **桌面端客户端**（Electron 绿色版，解压即用，无安装器/无签名） |
-| `gothere-linux-x64` / `gothere-darwin-arm64` / `gothere-win32-x64.exe` | 单二进制 CLI，各自自检过 |
+| `gothere-<目标>` / `gothere-win32-x64.exe` | 单二进制 CLI（自带运行时） |
+| `gothere-agent-<目标>.tar.gz` / `.zip` | **Agent 技能包**：`SKILL.md` + 该平台单二进制，解压即用 |
+| `gothere-agent-node.tar.gz` | 同一技能包但不带二进制：`SKILL.md` + 单文件 CLI 脚本（需要 node ≥ 26） |
+| `gothere-desktop-<目标>.tar.gz` / `.zip` | **桌面端客户端**（Electron 绿色版，macOS 已 ad-hoc 签名） |
 | `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI 脚本（ESM / CJS，后者即 SEA 用的那份） |
 | `gothere-play.html` | 单文件游戏（浏览器直接打开） |
 | `SHA256SUMS.txt` | 以上全部文件的校验和 |
@@ -108,10 +120,11 @@ git tag v0.1.0 && git push origin v0.1.0
 `https://github.com/dezhishen/gothere/releases/latest/download/gothere-linux-x64`。
 也可以在 Actions 页面手动触发 release 工作流并指定已有 tag。
 
-流水线分四段：`verify`（版本一致性 + 测试 + 分层门禁 + 单文件产物 + node 版技能包）→
-`binary`（三平台单二进制 + 对应技能包）→ `desktop`（三平台 Electron 客户端）→
-`publish`（汇总 + 校验和 + 发布）。压缩包后缀跟平台走：posix 是 `.tar.gz`（能保留符号
-链接与可执行位，macOS 的 `.app` 需要），Windows 是 `.zip`。
+流水线三段、**全在 ubuntu 上跑**：`verify`（版本一致性 + 测试 + 分层门禁 + 单文件产物
++ node 版技能包）→ `targets`（四个目标平台各跑一次 `build-release.mjs`，产出二进制 +
+技能包 + 桌面客户端）→ `publish`（汇总 + 校验和 + 发布）。压缩包后缀跟**目标平台**走：
+posix 是 `.tar.gz`（保留符号链接与可执行位，macOS 的 `.app` 需要），Windows 是 `.zip`
+（本仓库自带一个零依赖的 ZIP 写入器，所以不需要 Windows 机器）。
 
 ### Agent 技能包
 
@@ -134,11 +147,16 @@ node scripts/build-skill.mjs --binary dist/gothere-linux-x64
 ### 桌面端客户端
 
 `pnpm build:desktop` 用 Electron 把单文件游戏包成一个绿色版客户端
-（`@electron/packager`，不做安装器、不签名）：
+（`@electron/packager`，不做安装器）：
 
 ```sh
-pnpm build:desktop                      # → dist/gothere-desktop-linux-x64.tar.gz
+pnpm build:desktop                                  # → dist/gothere-desktop-<宿主平台>.tar.gz
+node scripts/build-desktop.mjs --target win32-x64   # 在 Linux 上产出 Windows 客户端
 ```
+
+跨平台不需要对应的 runner：packager 只是下载目标平台的 Electron 再组装（Windows 的
+版本信息由纯 JS 的 `resedit` 写入）。macOS 的 `.app` 组装后签名失效，用 rcodesign
+在本机 ad-hoc 签名。
 
 客户端里只有三样东西：`index.html`（游戏）、`main.cjs`（主进程）、`package.json`。
 构建脚本会解开 `app.asar` 自检内容，多一个文件就报错。主进程的安全默认值：不开 node
@@ -235,7 +253,10 @@ pnpm build
 - `scripts/build.mjs`：无第三方运行时依赖的单文件打包，构建期校验并内联关卡。
 - `scripts/build-cli.mjs`：把 CLI 打成单文件独立制品（`gothere-cli.mjs` 与给 SEA 用的
   `gothere-cli.cjs`）。
-- `scripts/build-binary.mjs`：用 Node SEA 产出单二进制并在空目录自检。
+- `scripts/build-binary.mjs`：用 SEA blob + postject 产出**任意目标平台**的单二进制并自检。
+- `scripts/build-release.mjs`：一个目标平台的全套制品（二进制 + 技能包 + 桌面客户端）。
+- `scripts/targets.mjs`：目标平台解析、官方 node 下载与魔数校验。
+- `scripts/rcodesign.mjs`：在非 macOS 宿主上给 Mach-O / .app 做 ad-hoc 签名。
 - `scripts/build-skill.mjs`：生成 `SKILL.md`（据 schema 现算）并打出 Agent 技能包。
 - `scripts/build-desktop.mjs`：把单文件游戏包成 Electron 客户端（asar + 平台压缩包）。
 - `scripts/archive.mjs`：按平台用系统自带工具打包（tar.gz / zip），不引第三方依赖。

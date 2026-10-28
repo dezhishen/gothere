@@ -8,7 +8,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describePlatform } from '../src/core/interpreters/index.js';
 import { describe, listTypes } from '../src/core/contract/registry.js';
 import { CODES } from '../src/app/errors.js';
-import { archiveName, archivePaths } from './archive.mjs';
+import { archiveFiles, archiveName } from './archive.mjs';
+import { nativeTarget, parseTarget, targetFromArgv } from './targets.mjs';
 import { buildCli } from './build-cli.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -236,7 +237,7 @@ export async function checkSkillFile() {
   return { ok: current === markdown, path: SKILL_FILE, markdown, current };
 }
 
-export async function buildSkill({ quiet = false, binary = null } = {}) {
+export async function buildSkill({ quiet = false, binary = null, target = nativeTarget() } = {}) {
   const { markdown } = await writeSkillFile();
   // 打包用的暂存目录：SKILL.md 的副本 + 可执行文件，保证解压出来就是一个自洽的技能目录。
   const dir = resolve(ROOT, 'dist', 'skill');
@@ -252,19 +253,20 @@ export async function buildSkill({ quiet = false, binary = null } = {}) {
   await copyFile(files[1].path, cliCjs);
 
   const nodeName = 'gothere-agent-node';
-  const nodeArchive = resolve(ROOT, 'dist', archiveName(nodeName));
+  // node 版技能包是跨平台脚本，统一 tar.gz（Windows 用户用 node 直接跑 .mjs）。
+  const nodeArchive = resolve(ROOT, 'dist', archiveName(nodeName, 'linux'));
   await rm(nodeArchive, { force: true });
-  await archivePaths(nodeArchive, [skillPath, cliMjs, cliCjs]);
+  await archiveFiles(nodeArchive, [skillPath, cliMjs, cliCjs], 'linux');
 
   let platformArchive = null;
   if (binary) {
-    const name = 'gothere-agent-' + process.platform + '-' + process.arch;
-    platformArchive = resolve(ROOT, 'dist', archiveName(name));
+    const { name: targetName, platform, exe } = parseTarget(target);
+    platformArchive = resolve(ROOT, 'dist', archiveName('gothere-agent-' + targetName, platform));
     await rm(platformArchive, { force: true });
     // 技能包里把二进制改名成 gothere-cli，SKILL.md 就是这么写的。
-    const renamed = resolve(dir, process.platform === 'win32' ? 'gothere-cli.exe' : 'gothere-cli');
+    const renamed = resolve(dir, 'gothere-cli' + exe);
     await copyFile(binary, renamed);
-    await archivePaths(platformArchive, [skillPath, renamed]);
+    await archiveFiles(platformArchive, [skillPath, renamed], platform);
   }
 
   if (!quiet) {
@@ -288,6 +290,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   } else {
     const index = argv.indexOf('--binary');
     const binary = index >= 0 ? resolve(argv[index + 1]) : null;
-    await buildSkill({ quiet: argv.includes('--quiet'), binary });
+    await buildSkill({ quiet: argv.includes('--quiet'), binary, target: targetFromArgv(argv) });
   }
 }

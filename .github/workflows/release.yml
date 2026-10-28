@@ -74,27 +74,19 @@ jobs:
             dist/gothere-agent-node.*
             skills/gothere-levels/SKILL.md
 
-  binary:
-    name: 单二进制 ${{ matrix.target }}
+  targets:
+    name: 制品 ${{ matrix.target }}
     needs: verify
+    # 一台 ubuntu 就能产出全部平台的制品：
+    # - 单二进制：与平台无关的 SEA blob + 目标平台的官方 node 本体（postject 注入）
+    # - 桌面端：@electron/packager 下载目标平台的 Electron 再组装
+    # - macOS：注入会让签名失效，用 rcodesign 在本机做 ad-hoc 签名
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: linux-x64
-            binary: gothere-linux-x64
-            agent: gothere-agent-linux-x64
-          - os: macos-14
-            target: darwin-arm64
-            binary: gothere-darwin-arm64
-            agent: gothere-agent-darwin-arm64
-          - os: windows-latest
-            target: win32-x64
-            binary: gothere-win32-x64.exe
-            agent: gothere-agent-win32-x64
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+        target: [linux-x64, linux-arm64, win32-x64, darwin-arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,71 +105,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # SEA 用当前 node 本体做底，不能交叉编译；构建脚本自己会在空目录里跑一遍
-      # --version / level list / level simulate 才算成功。
-      - name: Build single binary
-        run: node scripts/build-binary.mjs
+      - name: Build binary, agent package and desktop client
+        run: node scripts/build-release.mjs --target ${{ matrix.target }}
 
-      # 技能包 = SKILL.md + 这个平台的二进制；Agent 下载一个包就能干活。
-      - name: Build agent skill package
-        run: node scripts/build-skill.mjs --binary dist/${{ matrix.binary }}
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp dist/gothere-${{ matrix.target }} release/ 2>/dev/null || true
+          cp dist/gothere-${{ matrix.target }}.exe release/ 2>/dev/null || true
+          cp dist/gothere-agent-${{ matrix.target }}.* release/
+          cp dist/gothere-desktop-${{ matrix.target }}.* release/
+          ls -l release
 
-      - name: Upload binary and skill package
+      - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: binary-${{ matrix.target }}
+          name: ${{ matrix.target }}
           if-no-files-found: error
-          path: |
-            dist/${{ matrix.binary }}
-            dist/${{ matrix.agent }}.*
-
-  desktop:
-    name: 桌面端 ${{ matrix.target }}
-    needs: verify
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: linux-x64
-          - os: macos-14
-            target: darwin-arm64
-          - os: windows-latest
-            target: win32-x64
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref_name }}
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # 客户端里就是单文件游戏 + Electron 主进程；脚本会解包 asar 自检内容。
-      - name: Build desktop client
-        run: node scripts/build-desktop.mjs
-
-      - name: Upload desktop client
-        uses: actions/upload-artifact@v5
-        with:
-          name: desktop-${{ matrix.target }}
-          if-no-files-found: error
-          path: dist/gothere-desktop-${{ matrix.target }}.*
+          path: release/*
 
   publish:
     name: 发布到 Release
-    needs: [verify, binary, desktop]
+    needs: [verify, targets]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

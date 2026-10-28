@@ -9,6 +9,7 @@ import { PLATFORM } from '../src/core/contract/versions.js';
 import { buildSkill, buildSkillMarkdown, checkSkillFile } from '../scripts/build-skill.mjs';
 import { listTypes, describe } from '../src/core/contract/registry.js';
 import { binaryName } from '../scripts/build-binary.mjs';
+import { TARGETS, nativeTarget, parseTarget } from '../scripts/targets.mjs';
 import { levels } from './levels-fixture.mjs';
 
 const run = promisify(execFile);
@@ -64,4 +65,14 @@ test('the committed skills/<name>/SKILL.md is generated, so it never drifts', as
 test('the platform version reported by the code matches package.json', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(PLATFORM.version, pkg.version, '改版本号时 package.json 与 contract/versions.js 要一起改');
+});
+
+test('targets are parsed from the flag, not from the host platform', () => {
+  assert.ok(TARGETS.includes(nativeTarget()));
+  assert.deepEqual(parseTarget('win32-x64'), { name: 'win32-x64', platform: 'win32', arch: 'x64', exe: '.exe' });
+  assert.equal(parseTarget('darwin-arm64').exe, '');
+  assert.throws(() => parseTarget('beos-x64'), /不支持的目标平台/);
+  // 压缩包后缀跟目标平台走，与宿主无关。
+  assert.equal(archiveName('gothere-agent-win32-x64', 'win32'), 'gothere-agent-win32-x64.zip');
+  assert.equal(archiveName('gothere-agent-darwin-arm64', 'darwin'), 'gothere-agent-darwin-arm64.tar.gz');
 });

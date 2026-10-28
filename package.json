@@ -37,6 +37,7 @@
     "@tailwindcss/cli": "^4.3.3",
     "electron": "^45.0.0",
     "playwright": "^1.64.1",
+    "postject": "1.0.0-alpha.6",
     "tailwindcss": "^4.3.3"
   },
   "bin": {
@@ -46,5 +47,6 @@
     "dist/gothere-cli.mjs",
     "dist/gothere-cli.cjs",
     "README.md"
-  ]
+  ],
+  "author": "dezhishen"
 }
