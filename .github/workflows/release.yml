@@ -59,6 +59,9 @@ jobs:
       - name: Build single-file game and CLI
         run: pnpm build
 
+      - name: Build agent skill package (node flavor)
+        run: node scripts/build-skill.mjs
+
       - name: Upload platform-independent artifacts
         uses: actions/upload-artifact@v5
         with:
@@ -68,6 +71,8 @@ jobs:
             dist/gothere-play.html
             dist/gothere-cli.mjs
             dist/gothere-cli.cjs
+            dist/gothere-agent-node.*
+            dist/skill/SKILL.md
 
   binary:
     name: 单二进制 ${{ matrix.target }}
@@ -79,12 +84,15 @@ jobs:
           - os: ubuntu-latest
             target: linux-x64
             binary: gothere-linux-x64
+            agent: gothere-agent-linux-x64
           - os: macos-14
             target: darwin-arm64
             binary: gothere-darwin-arm64
+            agent: gothere-agent-darwin-arm64
           - os: windows-latest
             target: win32-x64
             binary: gothere-win32-x64.exe
+            agent: gothere-agent-win32-x64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -110,16 +118,66 @@ jobs:
       - name: Build single binary
         run: node scripts/build-binary.mjs
 
-      - name: Upload binary
+      # 技能包 = SKILL.md + 这个平台的二进制；Agent 下载一个包就能干活。
+      - name: Build agent skill package
+        run: node scripts/build-skill.mjs --binary dist/${{ matrix.binary }}
+
+      - name: Upload binary and skill package
         uses: actions/upload-artifact@v5
         with:
           name: binary-${{ matrix.target }}
           if-no-files-found: error
-          path: dist/${{ matrix.binary }}
+          path: |
+            dist/${{ matrix.binary }}
+            dist/${{ matrix.agent }}.*
+
+  desktop:
+    name: 桌面端 ${{ matrix.target }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+          - os: macos-14
+            target: darwin-arm64
+          - os: windows-latest
+            target: win32-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 客户端里就是单文件游戏 + Electron 主进程；脚本会解包 asar 自检内容。
+      - name: Build desktop client
+        run: node scripts/build-desktop.mjs
+
+      - name: Upload desktop client
+        uses: actions/upload-artifact@v5
+        with:
+          name: desktop-${{ matrix.target }}
+          if-no-files-found: error
+          path: dist/gothere-desktop-${{ matrix.target }}.*
 
   publish:
     name: 发布到 Release
-    needs: [verify, binary]
+    needs: [verify, binary, desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

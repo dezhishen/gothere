@@ -96,14 +96,48 @@ git tag v0.2.0 && git push origin v0.2.0
 
 | 文件 | 说明 |
 |---|---|
-| `gothere-linux-x64` / `gothere-darwin-arm64` / `gothere-win32-x64.exe` | 单二进制，各自自检过 |
-| `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI（ESM / CJS，后者即 SEA 用的那份） |
-| `gothere-play.html` | 单文件游戏 |
+| `gothere-agent-linux-x64.tar.gz`<br>`gothere-agent-darwin-arm64.tar.gz`<br>`gothere-agent-win32-x64.zip` | **Agent 技能包**：`SKILL.md` + 该平台的单二进制（解压即用，不依赖 node） |
+| `gothere-agent-node.tar.gz` / `.zip` | 同一个技能包，但不带二进制：`SKILL.md` + 单文件 CLI 脚本（需要 node ≥ 26） |
+| `gothere-desktop-linux-x64.tar.gz`<br>`gothere-desktop-darwin-arm64.tar.gz`<br>`gothere-desktop-win32-x64.zip` | **桌面端客户端**（Electron 绿色版，解压即用，无安装器/无签名） |
+| `gothere-linux-x64` / `gothere-darwin-arm64` / `gothere-win32-x64.exe` | 单二进制 CLI，各自自检过 |
+| `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI 脚本（ESM / CJS，后者即 SEA 用的那份） |
+| `gothere-play.html` | 单文件游戏（浏览器直接打开） |
 | `SHA256SUMS.txt` | 以上全部文件的校验和 |
 
 文件名固定、版本靠 tag，所以可以直接用稳定链接，例如
 `https://github.com/dezhishen/gothere/releases/latest/download/gothere-linux-x64`。
 也可以在 Actions 页面手动触发 release 工作流并指定已有 tag。
+
+流水线分四段：`verify`（版本一致性 + 测试 + 分层门禁 + 单文件产物 + node 版技能包）→
+`binary`（三平台单二进制 + 对应技能包）→ `desktop`（三平台 Electron 客户端）→
+`publish`（汇总 + 校验和 + 发布）。压缩包后缀跟平台走：posix 是 `.tar.gz`（能保留符号
+链接与可执行位，macOS 的 `.app` 需要），Windows 是 `.zip`。
+
+### Agent 技能包
+
+`pnpm build:agent` 会把 CLI 和一份 **由代码里的 schema 现算出来的 `SKILL.md`** 打在一起：
+
+```sh
+pnpm build:agent                        # → dist/gothere-agent-node.tar.gz
+node scripts/build-skill.mjs --binary dist/gothere-linux-x64
+                                        # → dist/gothere-agent-linux-x64.tar.gz
+```
+
+`SKILL.md` 里的类别、字段、声明槽、类型、状态、范例关卡全部由 `describe()` 与关卡清单
+生成，所以不会和实现漂移（`tests/release.test.mjs` 会逐项比对）。
+
+### 桌面端客户端
+
+`pnpm build:desktop` 用 Electron 把单文件游戏包成一个绿色版客户端
+（`@electron/packager`，不做安装器、不签名）：
+
+```sh
+pnpm build:desktop                      # → dist/gothere-desktop-linux-x64.tar.gz
+```
+
+客户端里只有三样东西：`index.html`（游戏）、`main.cjs`（主进程）、`package.json`。
+构建脚本会解开 `app.asar` 自检内容，多一个文件就报错。主进程的安全默认值：不开 node
+集成、开上下文隔离与沙箱、外链一律交给系统浏览器、拒绝所有权限请求。
 
 ## 手机与异地试玩
 
@@ -195,6 +229,10 @@ pnpm build
 - `scripts/build-cli.mjs`：把 CLI 打成单文件独立制品（`gothere-cli.mjs` 与给 SEA 用的
   `gothere-cli.cjs`）。
 - `scripts/build-binary.mjs`：用 Node SEA 产出单二进制并在空目录自检。
+- `scripts/build-skill.mjs`：生成 `SKILL.md`（据 schema 现算）并打出 Agent 技能包。
+- `scripts/build-desktop.mjs`：把单文件游戏包成 Electron 客户端（asar + 平台压缩包）。
+- `scripts/archive.mjs`：按平台用系统自带工具打包（tar.gz / zip），不引第三方依赖。
+- `desktop/main.cjs`：Electron 主进程（窗口、菜单、外链与权限策略）。
 - `scripts/bundle.mjs` / `scripts/content.mjs`：两条制品共用的模块打包器与内容读取。
 - `scripts/check-layers.mjs`：分层门禁（依赖只向下、声明槽必须是叶子模块且不含函数）。
 - `scripts/css.mjs`：调用 Tailwind CLI 编译样式；`scripts/dev.mjs` 同时跑样式监听与开发服务器。
