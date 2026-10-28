@@ -1,0 +1,42 @@
+{
+  "category": "mechanism",
+  "kind": "guard",
+  "version": 1,
+  "defaultWidth": 34,
+  "iconOffset": 96,
+  "states": [
+    {
+      "id": "patrolling",
+      "label": "巡逻中"
+    },
+    {
+      "id": "stopped",
+      "label": "暂时停下"
+    }
+  ],
+  "slots": {
+    "moves": {
+      "inState": "patrolling",
+      "speed": 48,
+      "between": [
+        300,
+        400
+      ]
+    },
+    "harms": {
+      "inState": "patrolling",
+      "reason": "hurt",
+      "message": "巡逻的守卫撞上了他。"
+    },
+    "reacts": {
+      "on": "input",
+      "from": "patrolling",
+      "actions": [
+        {
+          "type": "become",
+          "state": "stopped"
+        }
+      ]
+    }
+  }
+}

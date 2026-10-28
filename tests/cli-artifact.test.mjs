@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCli, buildCliSources } from '../scripts/build-cli.mjs';
 import { binaryName } from '../scripts/build-binary.mjs';
+import { readLevelsContent } from '../scripts/content.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let artifact = null;
@@ -35,7 +36,9 @@ test('a copied artifact runs the whole CLI outside the repository', async () => 
   const listed = run(solo, moved, ['level', 'list', '--json']);
   assert.equal(listed.status, 0, listed.stderr);
   const levels = JSON.parse(listed.stdout).data.levels;
-  assert.equal(levels.length, 6);
+  // 关卡是内容制品：加一张关卡不该让这里失配，用内容清单本身当基准。
+  const bundled = (await readLevelsContent()).levels;
+  assert.deepEqual(levels.map((level) => level.id), bundled.map((level) => level.id));
 
   const solved = run(solo, moved, ['level', 'simulate', 'all-together',
     '--inputs', '[{"tick":150,"source":"axe"},{"tick":200,"source":"guard"},{"tick":520,"source":"bridge-switch"},{"tick":800,"source":"lift-switch"}]', '--json']);
@@ -75,7 +78,8 @@ test('the CommonJS form exists for SEA and behaves like the ESM one', async () =
 
   const asCjs = spawnSync(process.execPath, ['dist/gothere-cli.cjs', 'level', 'list', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true });
   assert.equal(asCjs.status, 0, asCjs.stderr);
-  assert.deepEqual(JSON.parse(asCjs.stdout).data.levels.length, 6);
+  assert.deepEqual(JSON.parse(asCjs.stdout).data.levels.map((level) => level.id),
+    (await readLevelsContent()).levels.map((level) => level.id));
 });
 
 test('binary names are per platform so releases never collide', () => {

@@ -195,6 +195,30 @@ pnpm build
 
 发布地址：https://dezhishen.github.io/gothere/ 。发布的是单文件版本（样式、脚本、关卡全部内联），所以放在 `/<repo>/` 子路径下也不需要改配置；`project.md`、源码和测试产物都不会发布。
 
+## 新增一种机关 / 物品（只写数据）
+
+类型是**数据**，不是代码：`types/<category>/<kind>.type.json` 就是权威来源。
+
+```bash
+# 1. 放一个文件（不用碰 manifest，目录扫描会自动收进来）
+cat > types/mechanism/trapdoor.type.json <<'JSON'
+{ "category": "mechanism", "kind": "trapdoor", "version": 1,
+  "defaultWidth": 40, "iconOffset": 96, "art": "gate",
+  "states": [{ "id": "shut", "label": "关着" }, { "id": "open", "label": "打开" }],
+  "slots": {
+    "reacts": { "on": "input", "from": "shut", "actions": [{ "type": "become", "state": "open" }] },
+    "blocks": { "inState": "shut", "reason": "gate", "message": "翻板关着，过不去。" } } }
+JSON
+
+# 2. 生成数据模块（生成物入库，`pnpm check:types` 校验一致性）
+pnpm types
+# 3. 刷新 SKILL.md（同一份 schema 生成）
+pnpm skill
+```
+
+不需要改工厂、校验器、内核、渲染、CLI 或测试：`art` 复用现成图元（不写就用占位图），
+状态与声明全部由数据决定。**新解释器**（新的一类，比如「地形」）才是加工厂文件的层级。
+
 ## 样式
 
 样式入口是 `src/styles/app.css`，由 Tailwind CSS v4 编译成 `src/style.css`（生成物，不入库）。
@@ -238,6 +262,8 @@ pnpm build
   moves / ground / lifts），每个文件只导出参数模板与所属阶段，**不含任何函数**；
   门禁会拦住想在元素里写行为代码的改动。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
+- `types/<category>/<kind>.type.json`：机关/物品的**类型数据**（状态、声明槽、默认宽度、
+  画法名）；`pnpm types` 生成 `src/core/interpreters/factories/generated-types.js`。
 - `src/core/interpreters/`：两层注册表。数据制品解释器固定 4 种（`level` / `bundle` /
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
   `item`），每类工厂按同一份接口产出自己的类型，注册只能落到已有类型上。

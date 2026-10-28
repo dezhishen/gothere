@@ -1,0 +1,24 @@
+{
+  "category": "mechanism",
+  "kind": "gate",
+  "version": 1,
+  "defaultWidth": 28,
+  "iconOffset": 91,
+  "states": [
+    {
+      "id": "closed",
+      "label": "关闭"
+    },
+    {
+      "id": "open",
+      "label": "开启"
+    }
+  ],
+  "slots": {
+    "blocks": {
+      "inState": "closed",
+      "reason": "gate",
+      "message": "门：此路暂时不通。先找个办法打开它。"
+    }
+  }
+}

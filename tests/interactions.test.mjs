@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { eventsOfEntity, typeDescriptor } from '../src/core/contract/registry.js';
+import { eventsOfEntity, listTypes, typeDescriptor } from '../src/core/contract/registry.js';
 import { validateDoc } from '../src/core/contract/validate.js';
 import { describePlatform, createGame } from '../src/core/interpreters/index.js';
 import { factoryFor } from '../src/core/interpreters/factories/index.js';
@@ -78,9 +78,10 @@ test('physical interaction happens in shared phases, not inside a factory', () =
 test('the platform groups interpreters by data kind and types by content factory', () => {
   const platform = describePlatform();
   assert.deepEqual(platform.factories.map((factory) => factory.category), ['map', 'mechanism', 'item']);
-  assert.deepEqual(platform.factories.map((factory) => factory.kinds.length), [0, 8, 3]);
-  assert.deepEqual(platform.types.map((type) => type.category), [
-    'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism',
-    'item', 'item', 'item',
-  ]);
+  // 数量与清单都不写死：新增类型必须让这里照常通过，一致性由下面的关系式保证。
+  assert.deepEqual(platform.types.map((type) => type.id), listTypes().map((type) => type.id));
+  for (const factory of platform.factories) {
+    assert.deepEqual(factory.kinds, platform.types.filter((type) => type.category === factory.category).map((type) => type.id));
+  }
+  assert.ok(platform.types.length > 0);
 });

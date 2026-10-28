@@ -1,0 +1,32 @@
+{
+  "category": "mechanism",
+  "kind": "crusher",
+  "version": 1,
+  "defaultWidth": 44,
+  "iconOffset": 96,
+  "states": [
+    {
+      "id": "active",
+      "label": "来回碾压"
+    },
+    {
+      "id": "parked",
+      "label": "停在一侧"
+    }
+  ],
+  "slots": {
+    "moves": {
+      "inState": "active",
+      "speed": 36,
+      "between": [
+        300,
+        400
+      ]
+    },
+    "blocks": {
+      "inState": "active",
+      "reason": "crusher",
+      "message": "碎石机来回碾压，过不去。"
+    }
+  }
+}

@@ -241,10 +241,13 @@ export async function checkSkillFile() {
  * Agent 技能包：SKILL.md + 该平台的单二进制（改名为 gothere-cli）。
  * 只有这一种形态——不产出「只带脚本」的口味，也不单独发布 SKILL.md。
  */
-export async function buildAgentPackage({ quiet = false, binary, target = nativeTarget(), outDir = resolve(ROOT, 'dist') } = {}) {
+export async function buildAgentPackage({ quiet = false, binary, target = nativeTarget(), outDir = resolve(ROOT, 'dist'), refreshRepoSkill = true } = {}) {
   if (!binary) throw new Error('buildAgentPackage 需要一个已构建好的二进制（--binary）。');
   const { name: targetName, platform, exe } = parseTarget(target);
-  const { markdown, path: skillFile } = await writeSkillFile();
+  // refreshRepoSkill=false 只打包、不动仓库里的生成物（测试用，避免测试改工作区）。
+  const { markdown, path: skillFile } = refreshRepoSkill
+    ? await writeSkillFile()
+    : { markdown: await buildSkillMarkdown(), path: SKILL_FILE };
 
   const dir = resolve(outDir, 'skill');
   await rm(dir, { recursive: true, force: true });

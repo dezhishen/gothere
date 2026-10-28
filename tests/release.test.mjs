@@ -55,7 +55,9 @@ test('the agent package is SKILL.md plus one self-contained binary', async () =>
   try {
     const binary = join(scratch, 'gothere-linux-x64');
     await writeFile(binary, Buffer.alloc(4096, 7));
-    const built = await buildAgentPackage({ quiet: true, binary, target: 'linux-x64', outDir: scratch });
+    const before = (await checkSkillFile()).current;
+    const built = await buildAgentPackage({ quiet: true, binary, target: 'linux-x64', outDir: scratch, refreshRepoSkill: false });
+    assert.equal((await checkSkillFile()).current, before, '打包测试不应该改写仓库里的 SKILL.md');
     const contents = (await run('tar', ['-tzf', built.path])).stdout.trim().split('\n').sort();
     assert.deepEqual(contents, ['SKILL.md', 'gothere-cli']);
     const skill = await readFile(built.skill, 'utf8');

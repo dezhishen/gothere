@@ -15,6 +15,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inject } from 'postject';
 import { buildCli } from './build-cli.mjs';
+import { readLevelsContent } from './content.mjs';
 import { signMachO } from './rcodesign.mjs';
 import { assertBinaryForTarget, fetchNodeBinary, nativeTarget, parseTarget, targetFromArgv } from './targets.mjs';
 
@@ -92,7 +93,8 @@ export async function buildBinary({ quiet = false, target = nativeTarget() } = {
       const { stdout: solvedOut } = await run(moved, ['level', 'simulate', 'all-together',
         '--inputs', '[{"tick":150,"source":"axe"},{"tick":200,"source":"guard"},{"tick":520,"source":"bridge-switch"},{"tick":800,"source":"lift-switch"}]', '--json'], { cwd: solo });
       if (JSON.parse(versionOut).data.version === undefined) throw new Error('版本号读不出来。');
-      if (JSON.parse(listOut).data.levels.length !== 6) throw new Error('内置关卡不完整。');
+      const bundled = (await readLevelsContent()).levels.length;
+      if (JSON.parse(listOut).data.levels.length !== bundled) throw new Error('内置关卡不完整。');
       if (JSON.parse(solvedOut).data.status !== 'won') throw new Error('单二进制跑不出已知解。');
       checked = 'ran';
     } finally {

@@ -10,7 +10,7 @@ import {
   registerFactory,
   resetFactories,
 } from '../src/core/interpreters/factories/index.js';
-import { fieldsOfCategory, schemaOfCategory } from '../src/core/contract/registry.js';
+import { fieldsOfCategory, listTypes, schemaOfCategory } from '../src/core/contract/registry.js';
 import { validateDoc } from '../src/core/contract/validate.js';
 import { levels } from './levels-fixture.mjs';
 
@@ -21,8 +21,14 @@ test('the system has exactly three content factories: map / mechanism / item', (
   const factories = listFactories();
   assert.deepEqual(factories.map((factory) => factory.category), ['map', 'mechanism', 'item']);
   assert.deepEqual(getFactory('map').kinds, []);
-  assert.deepEqual(getFactory('mechanism').kinds, ['switch', 'bridge', 'gate', 'hazard', 'plate', 'lift', 'guard', 'crusher']);
-  assert.deepEqual(getFactory('item').kinds, ['axe', 'hammer', 'key']);
+  // 不写死类型清单：新增机关/物品只改它自己的工厂，这里必须照常通过。
+  for (const category of ['mechanism', 'item']) {
+    const kinds = getFactory(category).kinds;
+    assert.ok(kinds.length > 0, category + ' 至少要有一个内建类型');
+    assert.equal(new Set(kinds).size, kinds.length, category + ' 的类型不能重名');
+    assert.deepEqual(kinds, listTypes().filter((type) => type.category === category).map((type) => type.id),
+      '工厂的 kinds 必须与注册表一致');
+  }
 });
 
 test('every category owns its own schema, so the field sets differ', () => {

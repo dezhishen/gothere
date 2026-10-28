@@ -1,0 +1,20 @@
+{
+  "category": "mechanism",
+  "kind": "lift",
+  "version": 1,
+  "defaultWidth": 70,
+  "iconOffset": 120,
+  "states": [
+    {
+      "id": "lower",
+      "label": "停在楼下"
+    },
+    {
+      "id": "upper",
+      "label": "停在楼上"
+    }
+  ],
+  "slots": {
+    "lifts": {}
+  }
+}

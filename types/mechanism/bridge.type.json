@@ -1,0 +1,22 @@
+{
+  "category": "mechanism",
+  "kind": "bridge",
+  "version": 1,
+  "defaultWidth": 28,
+  "iconOffset": 91,
+  "states": [
+    {
+      "id": "folded",
+      "label": "收起"
+    },
+    {
+      "id": "extended",
+      "label": "已铺好"
+    }
+  ],
+  "slots": {
+    "ground": {
+      "inState": "extended"
+    }
+  }
+}

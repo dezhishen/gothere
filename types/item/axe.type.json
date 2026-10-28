@@ -1,0 +1,36 @@
+{
+  "category": "item",
+  "kind": "axe",
+  "version": 1,
+  "defaultWidth": 34,
+  "iconOffset": 96,
+  "states": [
+    {
+      "id": "idle",
+      "label": "放在地上"
+    },
+    {
+      "id": "held",
+      "label": "已举起"
+    }
+  ],
+  "slots": {
+    "carryable": {},
+    "harms": {
+      "inState": "idle",
+      "unlessHeld": true,
+      "reason": "hurt",
+      "message": "地上的斧头可不认人。"
+    },
+    "reacts": {
+      "on": "input",
+      "from": "held",
+      "actions": [
+        {
+          "type": "become",
+          "state": "idle"
+        }
+      ]
+    }
+  }
+}

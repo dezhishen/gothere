@@ -1,0 +1,32 @@
+{
+  "category": "item",
+  "kind": "key",
+  "version": 1,
+  "defaultWidth": 20,
+  "iconOffset": 92,
+  "states": [
+    {
+      "id": "idle",
+      "label": "落在地上"
+    },
+    {
+      "id": "held",
+      "label": "握在手里"
+    },
+    {
+      "id": "used",
+      "label": "用掉了"
+    }
+  ],
+  "slots": {
+    "carryable": {}
+  },
+  "tags": [
+    "key",
+    "yellow"
+  ],
+  "hiddenStates": [
+    "used"
+  ],
+  "consumedState": "used"
+}

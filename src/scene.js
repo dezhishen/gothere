@@ -1,3 +1,5 @@
+import { typeDescriptor } from './core/contract/registry.js';
+
 const C = { ink:'#405c43', grass:'#9bac7b', land:'#a6b48b', dark:'#667f59', cream:'#faf4da', wood:'#b9a077', rust:'#b9846e' };
 const noise = (i) => { const value = Math.sin(i * 127.1 + 311.7) * 43758.5453; return value - Math.floor(value); };
 
@@ -190,6 +192,12 @@ export function createRenderer(canvas) {
     line(6,0,6,4,'#c9a85f',2);
     ctx.restore();
   }
+  // 画法表：类型用 `art` 声明自己长什么样（默认与类型同名，见工厂的 createProduct）。
+  // 表里没有的画法一律走 placeholder——新增类型不改渲染代码也能跑，只是画面朴素。
+  function artFor(e) {
+    const art = typeDescriptor(e.kind)?.art ?? e.kind;
+    return ART[art] ?? placeholder;
+  }
   // 缺失渲染实现时的占位：画面降级，但校验与模拟不受影响。
   function placeholder(e) {
     rect(e.x,404,e.width,36,7,'#d9d3b7','#a3a97e');
@@ -241,6 +249,11 @@ export function createRenderer(canvas) {
     const t=e.lifts;if(!t)return e.y??440;
     return e.state===t.upperState?(t.upperY??300):(t.lowerY??440);
   }
+  // 画法名 → 图元。新增类型可以复用已有画法（比如 art:'gate'），也可以不声明。
+  const ART = {
+    lever, fan, gate, plate, axe, hammer, key, lift, guard, crusher,
+    switch: lever, hazard: fan,
+  };
   return {
     draw(level,snapshot,{time=0,fallAge=0,reducedMotion=false}={}) {
       ctx.setTransform(canvas.width/1200,0,0,canvas.height/640,0,0);ctx.clearRect(0,0,1200,640);
@@ -256,17 +269,7 @@ export function createRenderer(canvas) {
       for(const e of Object.values(snapshot.entities)){
         if(isGround(e)||hidden(e))continue;
         ctx.save();ctx.translate(0,floorOf(e)-440);
-        if(e.kind==='switch')lever(e);
-        else if(e.kind==='hazard')fan(e,snapshot.tick/60);
-        else if(e.kind==='gate')gate(e);
-        else if(e.kind==='plate')plate(e);
-        else if(e.kind==='axe')axe(e);
-        else if(e.kind==='hammer')hammer(e);
-        else if(e.kind==='key')key(e);
-        else if(e.kind==='lift')lift(e);
-        else if(e.kind==='guard')guard(e);
-        else if(e.kind==='crusher')crusher(e);
-        else placeholder(e);
+        artFor(e)(e, snapshot.tick/60);
         ctx.restore();
       }
       walker(snapshot,time,fallAge,reducedMotion);

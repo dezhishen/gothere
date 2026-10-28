@@ -1,0 +1,16 @@
+{
+  "schema": "types@1",
+  "files": [
+    "mechanism/switch.type.json",
+    "mechanism/bridge.type.json",
+    "mechanism/gate.type.json",
+    "mechanism/hazard.type.json",
+    "mechanism/plate.type.json",
+    "mechanism/lift.type.json",
+    "mechanism/guard.type.json",
+    "mechanism/crusher.type.json",
+    "item/axe.type.json",
+    "item/hammer.type.json",
+    "item/key.type.json"
+  ]
+}

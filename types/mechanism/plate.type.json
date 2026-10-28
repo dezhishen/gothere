@@ -1,0 +1,33 @@
+{
+  "category": "mechanism",
+  "kind": "plate",
+  "version": 1,
+  "defaultWidth": 28,
+  "iconOffset": 91,
+  "states": [
+    {
+      "id": "idle",
+      "label": "等待踩下"
+    },
+    {
+      "id": "pressed",
+      "label": "已踩下"
+    }
+  ],
+  "slots": {
+    "reacts": {
+      "on": "contact",
+      "from": "idle",
+      "actions": [
+        {
+          "type": "become",
+          "state": "pressed"
+        },
+        {
+          "type": "publish",
+          "event": "enter"
+        }
+      ]
+    }
+  }
+}

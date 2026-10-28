@@ -162,6 +162,7 @@ export function describe(kind) {
     version: type.version,
     defaultWidth: type.defaultWidth,
     iconOffset: type.iconOffset,
+    art: type.art,
     states: type.states.map((item) => ({ id: item.id, label: item.label })),
     tags: [...(type.tags ?? [])],
     hiddenStates: [...(type.hiddenStates ?? [])],

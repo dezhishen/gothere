@@ -1,0 +1,25 @@
+{
+  "category": "item",
+  "kind": "hammer",
+  "version": 1,
+  "defaultWidth": 32,
+  "iconOffset": 96,
+  "states": [
+    {
+      "id": "idle",
+      "label": "放在地上"
+    },
+    {
+      "id": "held",
+      "label": "握在手里"
+    }
+  ],
+  "slots": {
+    "carryable": {},
+    "reacts": {
+      "on": "input",
+      "from": "held",
+      "actions": []
+    }
+  }
+}

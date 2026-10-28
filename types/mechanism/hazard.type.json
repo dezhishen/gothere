@@ -1,0 +1,35 @@
+{
+  "category": "mechanism",
+  "kind": "hazard",
+  "version": 1,
+  "defaultWidth": 28,
+  "iconOffset": 135,
+  "art": "fan",
+  "states": [
+    {
+      "id": "running",
+      "label": "转动中"
+    },
+    {
+      "id": "stopped",
+      "label": "已停下"
+    }
+  ],
+  "slots": {
+    "reacts": {
+      "on": "input",
+      "from": "running",
+      "actions": [
+        {
+          "type": "become",
+          "state": "stopped"
+        }
+      ]
+    },
+    "blocks": {
+      "inState": "running",
+      "reason": "hazard",
+      "message": "风太大，被吹了个措手不及。经过之前先关风扇。"
+    }
+  }
+}

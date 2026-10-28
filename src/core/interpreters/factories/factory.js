@@ -38,6 +38,9 @@ function createProduct(category, factoryVersion, kind, type) {
   if (type.hiddenStates !== undefined && !Array.isArray(type.hiddenStates)) {
     throw new Error(category + ' 的类型 ' + kind + ' 的 hiddenStates 必须是数组。');
   }
+  if (type.art !== undefined && !isString(type.art)) {
+    throw new Error(category + ' 的类型 ' + kind + ' 的 art 必须是画法名（字符串）。');
+  }
   const states = Object.freeze(type.states.map((state) => {
     if (!isObject(state) || typeof state.id !== 'string' || typeof state.label !== 'string') {
       throw new Error(category + ' 的类型 ' + kind + ' 的状态必须是 {id,label}。');
@@ -51,6 +54,9 @@ function createProduct(category, factoryVersion, kind, type) {
     factoryVersion,
     defaultWidth: type.defaultWidth,
     iconOffset: type.iconOffset,
+    // 画法名：渲染器按它取图元。默认与类型同名，未知画法由渲染器兜底成占位图，
+    // 所以新增类型不必改渲染代码。
+    art: type.art ?? kind,
     states,
     slots: Object.freeze(Object.fromEntries(
       Object.entries(slots).map(([name, params]) => [name, Object.freeze({ ...(params ?? {}) })]),

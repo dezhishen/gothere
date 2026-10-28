@@ -1,0 +1,30 @@
+{
+  "category": "mechanism",
+  "kind": "switch",
+  "version": 1,
+  "defaultWidth": 28,
+  "iconOffset": 91,
+  "art": "lever",
+  "states": [
+    {
+      "id": "off",
+      "label": "待触发"
+    },
+    {
+      "id": "on",
+      "label": "已触发"
+    }
+  ],
+  "slots": {
+    "reacts": {
+      "on": "input",
+      "from": "off",
+      "actions": [
+        {
+          "type": "become",
+          "state": "on"
+        }
+      ]
+    }
+  }
+}
