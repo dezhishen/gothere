@@ -115,7 +115,9 @@ git tag v0.1.0 && git push origin v0.1.0
 | `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI 脚本（ESM / CJS，后者即 SEA 用的那份） |
 | `gothere-play.html` | 单文件游戏（浏览器直接打开） |
 | `SHA256SUMS.txt` | 以上全部文件的校验和 |
-| `SKILL.md` | 单独一份技能说明书（和压缩包里的是同一份） |
+
+`SKILL.md` **不单独发布**：它只作为 Agent 技能包的一员（`gothere-agent-*.tar.gz` / `.zip`），
+和可执行文件一起解压出来就能用。仓库里的 `skills/gothere-levels/SKILL.md` 是它的源。
 
 下载裸二进制后要 `chmod +x gothere-linux-x64` 才能直接执行（Release 资产不保存可执行位）；
 从 `gothere-agent-*.tar.gz` / `gothere-desktop-*.tar.gz` 里解出来的已经带好权限。

@@ -71,7 +71,7 @@ jobs:
           mkdir -p release
           cp dist/gothere-play.html dist/gothere-cli.mjs dist/gothere-cli.cjs release/
           cp dist/gothere-agent-node.* release/
-          cp skills/gothere-levels/SKILL.md release/
+          # SKILL.md 不单独发布：它只作为 Agent 技能包的一员存在。
           ls -l release
 
       - name: Upload platform-independent artifacts
