@@ -3,6 +3,7 @@
 
 import { LIMITS, WORLD } from './constants.js';
 import { eventsOfEntity, isCapability, isType, typeDescriptor } from './registry.js';
+import { getFactory } from '../interpreters/factories/index.js';
 import { SCHEMA_VERSION, requirementsOf } from './versions.js';
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,47}$/;
@@ -67,34 +68,14 @@ export function validateDoc(input, options = {}) {
     fail('SCHEMA_INVALID', 'hint', 'hint 必须是 1～' + LIMITS.hintMax + ' 字的提示。');
   }
 
-  const world = input.world;
-  if (!isObject(world) || world.width !== WORLD.width || world.height !== WORLD.height || world.groundY !== WORLD.groundY) {
-    fail('SCHEMA_INVALID', 'world',
-      '当前版本 world 必须为 {width:' + WORLD.width + ',height:' + WORLD.height + ',groundY:' + WORLD.groundY + '}。');
-  }
-
-  const actor = input.actor;
-  if (!isObject(actor) || !inRange(actor.x, LIMITS.actorMinX, LIMITS.actorMaxX) || !inRange(actor.speed, LIMITS.minSpeed, LIMITS.maxSpeed)) {
-    fail('SCHEMA_INVALID', 'actor',
-      'actor 需要合法的 x（' + LIMITS.actorMinX + '～' + LIMITS.actorMaxX + '）和 speed（' + LIMITS.minSpeed + '～' + LIMITS.maxSpeed + '，单位/秒）。');
-  }
-
-  const goal = input.goal;
-  if (!isObject(goal) || !inRange(goal.x, LIMITS.goalMinX, LIMITS.goalMaxX) ||
-    !isNumber(actor && actor.x) || !(goal.x > actor.x)) {
-    fail('SCHEMA_INVALID', 'goal', 'goal.x 必须在角色起点右侧且不超过 ' + LIMITS.goalMaxX + '。');
-  }
-
-  const platforms = Array.isArray(input.platforms) ? input.platforms : [];
-  if (!Array.isArray(input.platforms) || platforms.length === 0 || platforms.length > LIMITS.maxPlatforms) {
-    fail('SCHEMA_INVALID', 'platforms', 'platforms 必须包含 1～' + LIMITS.maxPlatforms + ' 段地面。');
-  }
-  platforms.forEach((platform, index) => {
-    if (!isObject(platform) || !inRange(platform.x, 0, WORLD.width) ||
-      !inRange(platform.width, 1, WORLD.width) || platform.x + platform.width > WORLD.width) {
-      fail('SCHEMA_INVALID', 'platforms[' + index + ']', 'platforms[' + index + '] 的范围不合法。');
-    }
+  // 地图那一段（世界 / 角色 / 终点 / 地面）由地图工厂校验，这里只管骨架字段与实体规则。
+  const mapResult = getFactory('map').parseSection({
+    world: input.world,
+    actor: input.actor,
+    goal: input.goal,
+    platforms: input.platforms,
   });
+  for (const item of mapResult.errors) fail(item.code, item.path, item.message);
 
   const rawEntities = Array.isArray(input.entities) ? input.entities : [];
   if (!Array.isArray(input.entities) || rawEntities.length > LIMITS.maxEntities) {
@@ -221,11 +202,11 @@ export function validateDoc(input, options = {}) {
     checkActions(rule.actions, path + '.actions', 0);
   });
 
-  // 5. 语义层：几何可达。只有 playable 才跑，编辑器不因「暂时无解」而拒绝保存。
+  // 5. 语义层：几何可达，同样由地图工厂提供查询。只有 playable 才跑。
   if (mode === 'playable' && errors.length === 0) {
-    const supported = (x) => platforms.some((platform) => x >= platform.x && x <= platform.x + platform.width);
-    if (!supported(input.actor.x)) fail('SEMANTIC_INVALID', 'actor.x', '角色起点需要位于地面上。');
-    if (!supported(input.goal.x)) fail('SEMANTIC_INVALID', 'goal.x', '终点需要位于地面上。');
+    const terrain = getFactory('map').terrain({ platforms: input.platforms });
+    if (!terrain.supports(input.actor.x)) fail('SEMANTIC_INVALID', 'actor.x', '角色起点需要位于地面上。');
+    if (!terrain.supports(input.goal.x)) fail('SEMANTIC_INVALID', 'goal.x', '终点需要位于地面上。');
   }
 
   return finish(errors, mode, input);

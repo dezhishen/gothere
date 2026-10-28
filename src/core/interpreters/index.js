@@ -9,6 +9,7 @@
 import { listTypes } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
 import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
+import { listFactories } from './factories/index.js';
 import { createBundleInterpreter } from './bundle-1.js';
 import { createLevelInterpreter } from './level-1.js';
 import { createManifestInterpreter } from './manifest-1.js';
@@ -88,6 +89,11 @@ export function describePlatform() {
     })),
     supports: platformSupports(listInterpreters('level')),
     types: listTypes(),
+    factories: listFactories().map((factory) => ({
+      category: factory.category,
+      version: factory.version,
+      kinds: [...factory.kinds],
+    })),
   };
 }
 

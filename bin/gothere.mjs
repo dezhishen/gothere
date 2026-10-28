@@ -146,6 +146,14 @@ function renderPlatform(result) {
     }
   }
   const table = (source) => Object.entries(source ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · ');
+  const factories = data.factories ?? [];
+  if (factories.length) {
+    lines.push('');
+    lines.push('内容工厂');
+    for (const factory of factories) {
+      lines.push('  ' + factory.category + ' (v' + factory.version + ') · 类型 ' + (factory.kinds.length ? factory.kinds.join(', ') : '（无实体）'));
+    }
+  }
   lines.push('');
   lines.push('平台支持类型：' + table(data.supports?.types));
   lines.push('平台支持能力：' + table(data.supports?.capabilities));
@@ -157,12 +165,12 @@ function renderSchema(result) {
   if (Array.isArray(data.types)) {
     const lines = ['类型 ' + data.types.length + ' 个 · 能力 ' + (data.capabilities ?? []).length + ' 个'];
     for (const type of data.types) {
-      lines.push('  ' + pad(type.id, 10) + 'v' + type.version + '  状态 ' + type.states.join('/') + (type.events.length ? '  事件 ' + type.events.join('/') : ''));
+      lines.push('  ' + pad(type.id, 10) + pad(type.category ?? '-', 10) + 'v' + type.version + '  状态 ' + type.states.join('/') + (type.events.length ? '  事件 ' + type.events.join('/') : ''));
     }
     lines.push('能力：' + (data.capabilities ?? []).map((item) => item.id + ' v' + item.version).join('、'));
     return lines.join('\n');
   }
-  const lines = [data.id + ' v' + data.version + ' · 默认宽度 ' + data.defaultWidth];
+  const lines = [data.id + ' v' + data.version + ' · 类别 ' + data.category + ' · 默认宽度 ' + data.defaultWidth];
   lines.push('状态：' + data.states.map((item) => item.id + '（' + item.label + '）').join('、'));
   lines.push('事件：' + (data.events.length ? data.events.join('、') : '无'));
   lines.push('能力：' + data.capabilities.map((item) => item.name + ' v' + item.version + ' ' + JSON.stringify(item.params)).join('、'));

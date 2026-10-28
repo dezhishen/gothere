@@ -28,8 +28,9 @@ const ALLOWED = Object.freeze({
 
 export function layerOf(relativePath) {
   const path = relativePath.split(sep).join('/');
-  // 能力实现是叶子：与契约同层，并且自身不 import 任何模块（否则 contract ↔ kernel 会成环）。
+  // 能力实现与内容工厂是叶子层：契约要读它们，所以它们必须呆在最底层。
   if (path.startsWith('core/capabilities/')) return 'L0';
+  if (path.startsWith('core/interpreters/factories/')) return 'L0';
   if (path.startsWith('core/contract/')) return 'L0';
   if (path.startsWith('core/kernel/')) return 'L1-kernel';
   if (path.startsWith('core/interpreters/')) return 'L1-interpreter';
@@ -59,6 +60,14 @@ export async function checkLayers() {
       const leaf = from.split(sep).join('/');
       if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.js') {
         violations.push({ file: from, target: specifier, reason: '能力实现必须是叶子模块，不能 import 任何东西。' });
+        continue;
+      }
+      if (leaf.startsWith('core/interpreters/factories/')) {
+        const target = relative(SRC, resolve(dirname(file), specifier)).split(sep).join('/');
+        const allowed = target.startsWith('core/interpreters/factories/') || target === 'core/contract/constants.js';
+        if (!allowed) {
+          violations.push({ file: from, target, reason: '内容工厂只能依赖 constants 与同目录，否则契约 ↔ 工厂会成环。' });
+        }
         continue;
       }
       record(from, layer, isCore, specifier, violations, file);

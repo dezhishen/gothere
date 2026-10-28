@@ -1,10 +1,10 @@
-// 类型 / 字段 / 状态的单点声明。类型是纯数据预设：能力组合 + 外观参数 + 默认行为。
-// 能力本身的实现（traits 与 hook）在 src/core/capabilities/，这里只引用它的声明。
+// 契约层的类型与能力视图：类型来自内容工厂（地图 / 机关 / 物品），
+// 能力来自能力实现注册表。这里只做聚合，不定义任何具体类型。
 
 import { getCapability, listCapabilities } from '../capabilities/index.js';
+import { createType, listTypeDescriptors } from '../interpreters/factories/index.js';
 import { LIMITS } from './constants.js';
 
-const state = (id, label) => Object.freeze({ id, label });
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** 能力词汇表：版本、默认参数与事件，由能力注册表派生，校验与支持矩阵共用。 */
@@ -19,85 +19,6 @@ export const CAPABILITIES = Object.freeze(Object.fromEntries(
   ]),
 ));
 
-/**
- * 预设：kind 只是名字。capabilities 的值是该能力在预设里的参数覆盖，
- * 顺序即语义（同一 tick 内按声明顺序执行 hook）。
- * iconOffset 只影响界面上操作热点的垂直位置，不参与模拟。
- */
-export const TYPES = Object.freeze({
-  switch: Object.freeze({
-    version: 1,
-    defaultWidth: LIMITS.defaultWidth,
-    iconOffset: 91,
-    states: Object.freeze([state('off', '待触发'), state('on', '已触发')]),
-    capabilities: Object.freeze({ clickable: Object.freeze({}) }),
-  }),
-  bridge: Object.freeze({
-    version: 1,
-    defaultWidth: LIMITS.defaultWidth,
-    iconOffset: 91,
-    states: Object.freeze([state('folded', '收起'), state('extended', '已铺好')]),
-    capabilities: Object.freeze({ extendGround: Object.freeze({ state: 'extended' }) }),
-  }),
-  gate: Object.freeze({
-    version: 1,
-    defaultWidth: LIMITS.defaultWidth,
-    iconOffset: 91,
-    states: Object.freeze([state('closed', '关闭'), state('open', '开启')]),
-    capabilities: Object.freeze({
-      blockPath: Object.freeze({
-        state: 'closed',
-        reason: 'gate',
-        message: '门：此路暂时不通。先找个办法打开它。',
-      }),
-    }),
-  }),
-  hazard: Object.freeze({
-    version: 1,
-    defaultWidth: LIMITS.defaultWidth,
-    iconOffset: 135,
-    states: Object.freeze([state('running', '转动中'), state('stopped', '已停下')]),
-    capabilities: Object.freeze({
-      clickable: Object.freeze({}),
-      blockPath: Object.freeze({
-        state: 'running',
-        reason: 'hazard',
-        message: '风太大，被吹了个措手不及。经过之前先关风扇。',
-      }),
-    }),
-  }),
-  plate: Object.freeze({
-    version: 1,
-    defaultWidth: LIMITS.defaultWidth,
-    iconOffset: 91,
-    states: Object.freeze([state('idle', '等待踩下'), state('pressed', '已踩下')]),
-    capabilities: Object.freeze({
-      region: Object.freeze({ from: 'idle', to: 'pressed', event: 'enter', message: '踩下了' }),
-    }),
-  }),
-  axe: Object.freeze({
-    version: 1,
-    defaultWidth: 34,
-    iconOffset: 96,
-    states: Object.freeze([state('idle', '放在地上'), state('held', '已举起')]),
-    capabilities: Object.freeze({
-      // 顺序有意义：先拿起，再判定伤害，否则拿起的同一 tick 就会被自己扎到。
-      holdable: Object.freeze({}),
-      damageOnContact: Object.freeze({ state: 'idle', reason: 'hurt', message: '地上的斧头可不认人。' }),
-    }),
-  }),
-  hammer: Object.freeze({
-    version: 1,
-    defaultWidth: 32,
-    iconOffset: 96,
-    states: Object.freeze([state('idle', '放在地上'), state('held', '握在手里')]),
-    capabilities: Object.freeze({
-      holdable: Object.freeze({}),
-      clickable: Object.freeze({}),
-    }),
-  }),
-});
-
 /** 实体字段元数据：检查面板与 CLI 共用，新增字段只加一行。 */
 export const FIELDS = Object.freeze([
   Object.freeze({ key: 'id', type: 'string', purpose: 'identity' }),
@@ -110,12 +31,13 @@ export const FIELDS = Object.freeze([
   Object.freeze({ key: 'capabilities', type: 'object', optional: true, label: '能力覆盖（可用 false 关闭预设能力）' }),
 ]);
 
-export function isType(kind) {
-  return typeof kind === 'string' && Object.hasOwn(TYPES, kind);
+/** 一个实体类型归哪个工厂、能产什么状态与能力；未知类型返回 null。 */
+export function typeDescriptor(kind) {
+  return createType(kind);
 }
 
-export function typeDescriptor(kind) {
-  return isType(kind) ? TYPES[kind] : null;
+export function isType(kind) {
+  return Boolean(typeDescriptor(kind));
 }
 
 export function isCapability(name) {
@@ -157,7 +79,7 @@ export function traitsOfEntity(entity) {
   return Object.freeze(traits);
 }
 
-/** 实体能发出的事件：由它实际具备的能力声明。 */
+/** 实体能发出的事件：由它实际具备的能力声明。跨类别订阅事件就靠这一条。 */
 export function eventsOfEntity(entity) {
   const names = new Set();
   for (const name of Object.keys(capabilitiesOfEntity(entity))) {
@@ -169,7 +91,7 @@ export function eventsOfEntity(entity) {
 }
 
 const STATE_LABELS = Object.freeze(Object.fromEntries(
-  Object.values(TYPES).flatMap((type) => type.states.map((item) => [item.id, item.label])),
+  listTypeDescriptors().flatMap((type) => type.states.map((item) => [item.id, item.label])),
 ));
 
 export function stateLabel(value) {
@@ -194,11 +116,12 @@ export function describe(kind) {
   if (!type) return null;
   return Object.freeze({
     id: kind,
+    category: type.category,
     version: type.version,
     defaultWidth: type.defaultWidth,
     iconOffset: type.iconOffset,
     states: type.states.map((item) => ({ id: item.id, label: item.label })),
-    events: [...new Set(Object.keys(type.capabilities).flatMap((name) => CAPABILITIES[name].events))],
+    events: [...new Set(Object.keys(type.capabilities).flatMap((name) => (CAPABILITIES[name] ? CAPABILITIES[name].events : [])))],
     capabilities: Object.entries(type.capabilities).map(([name, params]) => ({
       name,
       version: CAPABILITIES[name].version,
@@ -209,14 +132,12 @@ export function describe(kind) {
 }
 
 export function listTypes() {
-  return Object.keys(TYPES).map((kind) => {
-    const type = TYPES[kind];
-    return {
-      id: kind,
-      version: type.version,
-      states: type.states.map((item) => item.id),
-      events: [...new Set(Object.keys(type.capabilities).flatMap((name) => CAPABILITIES[name].events))],
-      capabilities: Object.keys(type.capabilities),
-    };
-  });
+  return listTypeDescriptors().map((type) => ({
+    id: type.id,
+    category: type.category,
+    version: type.version,
+    states: type.states.map((item) => item.id),
+    events: [...new Set(Object.keys(type.capabilities).flatMap((name) => (CAPABILITIES[name] ? CAPABILITIES[name].events : [])))],
+    capabilities: Object.keys(type.capabilities),
+  }));
 }

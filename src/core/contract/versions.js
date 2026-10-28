@@ -3,7 +3,7 @@
 // 文档解释器只声明它能读哪些 schemaVersion —— 三者相乘才是平台真正能跑的东西。
 
 import { listCapabilities } from '../capabilities/index.js';
-import { TYPES } from './registry.js';
+import { createType, listTypeDescriptors } from '../interpreters/factories/index.js';
 
 export const SCHEMA_VERSION = 1;
 
@@ -12,7 +12,7 @@ export const PLATFORM = Object.freeze({ name: 'gothere', version: '0.2.0' });
 const positive = (value, fallback) => (Number.isInteger(value) && value > 0 ? value : fallback);
 
 export function entityTypeVersion(entity) {
-  const type = entity && TYPES[entity.kind];
+  const type = createType(entity && entity.kind);
   return positive(entity && entity.typeVersion, type ? type.version : 1);
 }
 
@@ -49,13 +49,13 @@ export function capabilityVersions() {
   return out;
 }
 
-/** 能跑的类型 → 支持的版本：数据里声明的类型，且它的每条能力都有实现。 */
+/** 能跑的类型 → 支持的版本：工厂产出的类型，且它的每条能力都有实现。 */
 export function typeVersions() {
   const implemented = new Set(listCapabilities().map((capability) => capability.id));
   const out = {};
-  for (const [kind, type] of Object.entries(TYPES)) {
+  for (const type of listTypeDescriptors()) {
     const missing = Object.keys(type.capabilities).filter((name) => !implemented.has(name));
-    if (missing.length === 0) out[kind] = [type.version];
+    if (missing.length === 0) out[type.id] = [type.version];
   }
   return out;
 }
