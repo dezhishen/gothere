@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { archiveName } from '../scripts/archive.mjs';
 import { PLATFORM } from '../src/core/contract/versions.js';
-import { buildSkill, buildSkillMarkdown, checkSkillFile } from '../scripts/build-skill.mjs';
+import { buildAgentPackage, buildSkillMarkdown, checkSkillFile } from '../scripts/build-skill.mjs';
+import { buildWeb } from '../scripts/build-web.mjs';
 import { listTypes, describe } from '../src/core/contract/registry.js';
 import { binaryName } from '../scripts/build-binary.mjs';
 import { TARGETS, nativeTarget, parseTarget } from '../scripts/targets.mjs';
@@ -44,16 +48,39 @@ test('SKILL.md is generated from the live schema, not a second copy of it', asyn
   assert.ok(!/"capabilities"/.test(markdown), '不要教 Agent 写已删除的 capabilities 槽');
 });
 
-test('the agent package ships SKILL.md next to a runnable CLI', async () => {
-  const built = await buildSkill({ quiet: true });
-  const contents = process.platform === 'win32'
-    ? null
-    : (await run('tar', ['-tzf', built.nodeArchive])).stdout.trim().split('\n');
-  if (contents) {
-    assert.deepEqual(contents.sort(), ['SKILL.md', 'gothere-cli.cjs', 'gothere-cli.mjs']);
+test('the agent package is SKILL.md plus one self-contained binary', async () => {
+  if (process.platform === 'win32') return;
+  // 用占位文件当二进制：这里只验证包的形状，真正的二进制由 build-release 构建并自检。
+  const scratch = await mkdtemp(join(tmpdir(), 'gothere-agent-test-'));
+  try {
+    const binary = join(scratch, 'gothere-linux-x64');
+    await writeFile(binary, Buffer.alloc(4096, 7));
+    const built = await buildAgentPackage({ quiet: true, binary, target: 'linux-x64', outDir: scratch });
+    const contents = (await run('tar', ['-tzf', built.path])).stdout.trim().split('\n').sort();
+    assert.deepEqual(contents, ['SKILL.md', 'gothere-cli']);
+    const skill = await readFile(built.skill, 'utf8');
+    assert.match(skill, /gothere-cli/, 'SKILL.md 要让 Agent 知道包里那个可执行文件叫什么');
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
   }
-  const skill = await readFile(built.skill, 'utf8');
-  assert.match(skill, /gothere-cli\.mjs/);
+});
+
+test('the static site package is an index.html ready for nginx', async () => {
+  if (process.platform === 'win32') return;
+  const built = await buildWeb({ quiet: true });
+  const contents = (await run('tar', ['-tzf', built.path])).stdout.trim().split('\n');
+  assert.deepEqual(contents, ['index.html'], '站点根只需要一个 index.html');
+});
+
+test('releases ship exactly three families of artifacts', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
+  // 1) 各平台 agent 包 2) 静态站点包 3) 各平台桌面端；裸二进制/脚本/SKILL.md 都不单独发布。
+  assert.match(workflow, /cp dist\/gothere-agent-\$\{\{ matrix\.target \}\}\.\*/);
+  assert.match(workflow, /cp dist\/gothere-desktop-\$\{\{ matrix\.target \}\}\.\*/);
+  assert.match(workflow, /cp dist\/gothere-web\.tar\.gz release\//);
+  assert.ok(!/cp dist\/gothere-play\.html/.test(workflow), 'HTML 由站点包代替，不再单独发布');
+  assert.ok(!/cp dist\/gothere-cli\.mjs/.test(workflow), 'CLI 脚本只在 agent 包里');
+  assert.ok(!/gothere-agent-node/.test(workflow), '不再发布只带脚本的 agent 包');
 });
 
 test('the committed skills/<name>/SKILL.md is generated, so it never drifts', async () => {

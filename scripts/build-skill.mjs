@@ -237,44 +237,34 @@ export async function checkSkillFile() {
   return { ok: current === markdown, path: SKILL_FILE, markdown, current };
 }
 
-export async function buildSkill({ quiet = false, binary = null, target = nativeTarget() } = {}) {
-  const { markdown } = await writeSkillFile();
-  // 打包用的暂存目录：SKILL.md 的副本 + 可执行文件，保证解压出来就是一个自洽的技能目录。
-  const dir = resolve(ROOT, 'dist', 'skill');
+/**
+ * Agent 技能包：SKILL.md + 该平台的单二进制（改名为 gothere-cli）。
+ * 只有这一种形态——不产出「只带脚本」的口味，也不单独发布 SKILL.md。
+ */
+export async function buildAgentPackage({ quiet = false, binary, target = nativeTarget(), outDir = resolve(ROOT, 'dist') } = {}) {
+  if (!binary) throw new Error('buildAgentPackage 需要一个已构建好的二进制（--binary）。');
+  const { name: targetName, platform, exe } = parseTarget(target);
+  const { markdown, path: skillFile } = await writeSkillFile();
+
+  const dir = resolve(outDir, 'skill');
+  await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
   const skillPath = resolve(dir, 'SKILL.md');
   await writeFile(skillPath, markdown, 'utf8');
+  // 包内把二进制改名成 gothere-cli（Windows 是 gothere-cli.exe），SKILL.md 就是这么写的。
+  const renamed = resolve(dir, 'gothere-cli' + exe);
+  await copyFile(binary, renamed);
 
-  const { files } = await buildCli({ quiet: true });
-  // 技能包是一个自洽的目录：SKILL.md + 可执行文件放在一起，压缩包解开就能用。
-  const cliMjs = resolve(dir, 'gothere-cli.mjs');
-  const cliCjs = resolve(dir, 'gothere-cli.cjs');
-  await copyFile(files[0].path, cliMjs);
-  await copyFile(files[1].path, cliCjs);
-
-  const nodeName = 'gothere-agent-node';
-  // node 版技能包是跨平台脚本，统一 tar.gz（Windows 用户用 node 直接跑 .mjs）。
-  const nodeArchive = resolve(ROOT, 'dist', archiveName(nodeName, 'linux'));
-  await rm(nodeArchive, { force: true });
-  await archiveFiles(nodeArchive, [skillPath, cliMjs, cliCjs], 'linux');
-
-  let platformArchive = null;
-  if (binary) {
-    const { name: targetName, platform, exe } = parseTarget(target);
-    platformArchive = resolve(ROOT, 'dist', archiveName('gothere-agent-' + targetName, platform));
-    await rm(platformArchive, { force: true });
-    // 技能包里把二进制改名成 gothere-cli，SKILL.md 就是这么写的。
-    const renamed = resolve(dir, 'gothere-cli' + exe);
-    await copyFile(binary, renamed);
-    await archiveFiles(platformArchive, [skillPath, renamed], platform);
-  }
-
+  const archive = resolve(outDir, archiveName('gothere-agent-' + targetName, platform));
+  await rm(archive, { force: true });
+  await archiveFiles(archive, [skillPath, renamed], platform);
+  const size = (await stat(archive)).size;
+  if (size < 1024) throw new Error('技能包看起来不对：' + size + ' 字节。');
   if (!quiet) {
-    console.log('Skill: ' + skillPath + ' (' + Math.round(markdown.length / 1024) + ' KiB) · ' +
-      basename(nodeArchive) + ' (' + ((await stat(nodeArchive)).size / 1024).toFixed(0) + ' KiB)' +
-      (platformArchive ? ' · ' + basename(platformArchive) + ' (' + ((await stat(platformArchive)).size / 1024 / 1024).toFixed(0) + ' MB)' : ''));
+    console.log('Agent: ' + archive + ' (' + (size / 1024 / 1024).toFixed(0) + ' MB, ' +
+      targetName + ', SKILL.md ' + Math.round(markdown.length / 1024) + ' KiB)');
   }
-  return { skill: skillPath, markdown, nodeArchive, platformArchive };
+  return { path: archive, name: basename(archive), bytes: size, target: targetName, skill: skillFile };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -282,14 +272,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (argv.includes('--check')) {
     const result = await checkSkillFile();
     if (!result.ok) {
-      console.error('✗ ' + result.path + ' 不是最新的：请运行 `pnpm build:agent` 重新生成。');
+      console.error('✗ ' + result.path + ' 不是最新的：请运行 `pnpm skill` 重新生成。');
       process.exitCode = 1;
     } else {
       console.log('✓ ' + result.path + ' 与 schema 一致');
     }
   } else {
+    // 不带 --binary：只重新生成仓库里的 SKILL.md（发布用的技能包由 build-release 产出）。
     const index = argv.indexOf('--binary');
     const binary = index >= 0 ? resolve(argv[index + 1]) : null;
-    await buildSkill({ quiet: argv.includes('--quiet'), binary, target: targetFromArgv(argv) });
+    if (binary) await buildAgentPackage({ quiet: argv.includes('--quiet'), binary, target: targetFromArgv(argv) });
+    else {
+      const { path } = await writeSkillFile();
+      if (!argv.includes('--quiet')) console.log('Skill: ' + path);
+    }
   }
 }

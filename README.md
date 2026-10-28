@@ -104,23 +104,20 @@ git tag v0.1.0 && git push origin v0.1.0
 `.github/workflows/release.yml` 会先校验（tag 必须等于 `package.json` 的版本、跑测试
 与分层门禁），再在三个平台各自构建单二进制，最后把下面这些挂到 GitHub Release：
 
-目标平台：`linux-x64`、`linux-arm64`、`win32-x64`、`darwin-arm64`。
+目标平台：`linux-x64`、`linux-arm64`、`win32-x64`、`darwin-arm64`。发布只有**三类**制品：
 
-| 文件 | 说明 |
-|---|---|
-| `gothere-<目标>` / `gothere-win32-x64.exe` | 单二进制 CLI（自带运行时） |
-| `gothere-agent-<目标>.tar.gz` / `.zip` | **Agent 技能包**：`SKILL.md` + 该平台单二进制，解压即用 |
-| `gothere-agent-node.tar.gz` | 同一技能包但不带二进制：`SKILL.md` + 单文件 CLI 脚本（需要 node ≥ 26） |
-| `gothere-desktop-<目标>.tar.gz` / `.zip` | **桌面端客户端**（Electron 绿色版，macOS 已 ad-hoc 签名） |
-| `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI 脚本（ESM / CJS，后者即 SEA 用的那份） |
-| `gothere-play.html` | 单文件游戏（浏览器直接打开） |
-| `SHA256SUMS.txt` | 以上全部文件的校验和 |
+| 类别 | 文件 | 内容 |
+|---|---|---|
+| ① Agent 技能包 | `gothere-agent-<目标>.tar.gz` / `.zip` | `SKILL.md` + 该平台的单二进制（包内叫 `gothere-cli`），解压即用、无外部依赖 |
+| ② HTML 静态站点包 | `gothere-web.tar.gz` | 只有一个 `index.html`（样式/脚本/关卡全内联），解压到站点根即可给 nginx 用 |
+| ③ 桌面端客户端 | `gothere-desktop-<目标>.tar.gz` / `.zip` | Electron 绿色版（macOS 已 ad-hoc 签名） |
+| — | `SHA256SUMS.txt` | 以上全部文件的校验和 |
 
-`SKILL.md` **不单独发布**：它只作为 Agent 技能包的一员（`gothere-agent-*.tar.gz` / `.zip`），
-和可执行文件一起解压出来就能用。仓库里的 `skills/gothere-levels/SKILL.md` 是它的源。
+除此之外不发布裸二进制、单独的 CLI 脚本或单独的 `SKILL.md`：它们都已经在对应的压缩包里，
+单独挂出去只会让人多下载一次。SKILL.md 的源是仓库里的 `skills/gothere-levels/SKILL.md`。
 
-下载裸二进制后要 `chmod +x gothere-linux-x64` 才能直接执行（Release 资产不保存可执行位）；
-从 `gothere-agent-*.tar.gz` / `gothere-desktop-*.tar.gz` 里解出来的已经带好权限。
+本地也能拿到同样的东西：`node scripts/build-release.mjs --target linux-x64`（二进制 →
+技能包 → 桌面端）和 `node scripts/build-web.mjs`（静态站点包）。
 
 文件名固定、版本靠 tag，所以可以直接用稳定链接，例如
 `https://github.com/dezhishen/gothere/releases/latest/download/gothere-linux-x64`。
@@ -134,12 +131,12 @@ posix 是 `.tar.gz`（保留符号链接与可执行位，macOS 的 `.app` 需�
 
 ### Agent 技能包
 
-`pnpm build:agent` 会把 CLI 和一份 **由代码里的 schema 现算出来的 `SKILL.md`** 打在一起：
+`pnpm skill` 依据 schema 重新生成 `skills/gothere-levels/SKILL.md`；打包时它和一平台一个
+的单二进制装进同一个压缩包：
 
 ```sh
-pnpm build:agent                        # → dist/gothere-agent-node.tar.gz
-node scripts/build-skill.mjs --binary dist/gothere-linux-x64
-                                        # → dist/gothere-agent-linux-x64.tar.gz
+pnpm skill                                            # 重新生成仓库里的 SKILL.md
+node scripts/build-release.mjs --target win32-x64      # → 二进制 + 技能包 + 桌面端
 ```
 
 技能源文件就在仓库里：**`skills/gothere-levels/SKILL.md`**。它不是手写的第二份文档——
@@ -264,6 +261,7 @@ pnpm build
 - `scripts/targets.mjs`：目标平台解析、官方 node 下载与魔数校验。
 - `scripts/rcodesign.mjs`：在非 macOS 宿主上给 Mach-O / .app 做 ad-hoc 签名。
 - `scripts/build-skill.mjs`：生成 `SKILL.md`（据 schema 现算）并打出 Agent 技能包。
+- `scripts/build-web.mjs`：产出给 nginx 用的静态站点包（单个 index.html）。
 - `scripts/build-desktop.mjs`：把单文件游戏包成 Electron 客户端（asar + 平台压缩包）。
 - `scripts/archive.mjs`：按平台用系统自带工具打包（tar.gz / zip），不引第三方依赖。
 - `desktop/main.cjs`：Electron 主进程（窗口、菜单、外链与权限策略）。

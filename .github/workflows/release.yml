@@ -59,19 +59,17 @@ jobs:
       - name: Build single-file game and CLI
         run: pnpm build
 
-      - name: Build agent skill package (node flavor)
-        run: node scripts/build-skill.mjs
+      - name: Build static site package
+        run: node scripts/build-web.mjs
 
       # 统一摊平到 release/ 再上传：artifact 会保留相对路径，
-      # 直接传 dist/… 与 skills/… 会在发布侧变成目录，校验和那一步就会炸。
+      # 直接传 dist/… 会在发布侧变成目录，校验和那一步就会炸。
       - name: Collect artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release
-          cp dist/gothere-play.html dist/gothere-cli.mjs dist/gothere-cli.cjs release/
-          cp dist/gothere-agent-node.* release/
-          # SKILL.md 不单独发布：它只作为 Agent 技能包的一员存在。
+          cp dist/gothere-web.tar.gz release/
           ls -l release
 
       - name: Upload platform-independent artifacts
@@ -120,8 +118,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          cp dist/gothere-${{ matrix.target }} release/ 2>/dev/null || true
-          cp dist/gothere-${{ matrix.target }}.exe release/ 2>/dev/null || true
           cp dist/gothere-agent-${{ matrix.target }}.* release/
           cp dist/gothere-desktop-${{ matrix.target }}.* release/
           ls -l release
@@ -149,6 +145,14 @@ jobs:
         with:
           path: release
           merge-multiple: true
+
+      # 重新发同一个 tag 时，旧资产会残留在 Release 上；先删掉再建，保证资产集合干净。
+      - name: Delete existing release for this tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: gh release delete "$TAG" --yes --cleanup-tag=false || true
 
       - name: Checksums
         shell: bash
