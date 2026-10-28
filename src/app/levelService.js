@@ -3,7 +3,7 @@
 import { LIMITS } from '../core/contract/constants.js';
 import { diffDocs } from '../core/contract/diff.js';
 import { describe } from '../core/contract/registry.js';
-import { createGame, describePlatform, parseLevel, replayLevel } from '../core/interpreter/registry.js';
+import { createGame, describePlatform, parseLevel, replayLevel } from '../core/interpreters/index.js';
 import { CODES, domainError, errorItem, toCode } from './errors.js';
 import { summarize } from './levelSource.js';
 

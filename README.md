@@ -108,7 +108,9 @@ pnpm build
 - `src/core/capabilities/`：能力实现单元（单击、延长地面、阻挡、区域、可持有、接触伤害），
   每个能力自带 traits 与相位 hook，内核只按名字调度。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
-- `src/core/interpreter/`：文档解释器注册表与 `level-1`（只负责 schemaVersion 1 的解析与运行）。
+- `src/core/interpreters/`：一种数据类型一组解释器——`level-1`（关卡文档）、`bundle-1`（单文件内联包）、
+  `levels-manifest-1`（关卡目录）、`recording-1`（回放记录）。它们只声明自己支持的 schema，
+  类型与能力另行聚合；新增一种数据 = 加一份文件 + 登记一行。
 - `src/app/`：用例层、内容源端口、错误码与 Agent skill 清单。
 - `levels/*.level.json` + `levels/manifest.json`：关卡内容制品。
 - `bin/gothere.mjs`：创作侧 CLI（`pnpm cli`）。

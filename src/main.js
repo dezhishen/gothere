@@ -1,6 +1,6 @@
 import { eventsOfEntity, stateLabel, typeDescriptor } from './core/contract/registry.js';
 import { validateLevel } from './core/contract/validate.js';
-import { createGame, describePlatform, replayLevel } from './core/interpreter/registry.js';
+import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.js';
 import { createDocSource, createTextSource } from './app/levelSource.js';
 import { createRenderer } from './scene.js';
 
@@ -250,7 +250,11 @@ window.gothere = Object.freeze({
 // 内容源：单文件产物读内联 JSON 块（零外部请求），开发态走 HTTP 读 levels/*.level.json。
 async function loadContent() {
   const embedded = $('levels-data');
-  if (embedded) return createDocSource(JSON.parse(embedded.textContent).levels).all();
+  if (embedded) {
+    const bundle = parseBundle(embedded.textContent);
+    if (!bundle.ok) throw new Error(bundle.errors[0].message);
+    return createDocSource(bundle.levels).all();
+  }
   const source = createTextSource({
     readText: async (path) => {
       const response = await fetch('/' + path, { cache: 'no-store' });

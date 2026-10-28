@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { listCapabilities, registerCapability } from '../src/core/capabilities/index.js';
 import { capabilitiesOfEntity, eventsOfEntity, traitsOfEntity } from '../src/core/contract/registry.js';
-import { createGame } from '../src/core/interpreter/registry.js';
+import { createGame } from '../src/core/interpreters/index.js';
 import { levels } from './levels-fixture.mjs';
 
 const axeLevel = () => structuredClone(levels.find((level) => level.id === 'the-axe'));

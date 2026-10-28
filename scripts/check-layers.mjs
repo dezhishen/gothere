@@ -32,7 +32,7 @@ export function layerOf(relativePath) {
   if (path.startsWith('core/capabilities/')) return 'L0';
   if (path.startsWith('core/contract/')) return 'L0';
   if (path.startsWith('core/kernel/')) return 'L1-kernel';
-  if (path.startsWith('core/interpreter/')) return 'L1-interpreter';
+  if (path.startsWith('core/interpreters/')) return 'L1-interpreter';
   if (path.startsWith('app/')) return 'L1-app';
   if (path === 'main.js') return 'L3-shell';
   return 'feature';

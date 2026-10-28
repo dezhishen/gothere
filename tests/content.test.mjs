@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 import { validateLevel } from '../src/core/contract/validate.js';
-import { createDocSource, createTextSource, parseManifest } from '../src/app/levelSource.js';
+import { createDocSource, createTextSource } from '../src/app/levelSource.js';
+import { parseManifest } from '../src/core/interpreters/index.js';
 import { levels } from './levels-fixture.mjs';
 
 const root = new URL('../', import.meta.url);

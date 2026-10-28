@@ -123,7 +123,7 @@ function renderSkills(result) {
   const lines = ['skills ' + (data.skills ?? []).length + ' 项 · 平台 ' + platform.platform?.name + ' ' + platform.platform?.version + ' · schemaVersion ' + platform.schemaVersion];
   for (const skill of data.skills ?? []) lines.push('  ' + pad(skill.id, 18) + skill.summary);
   lines.push('');
-  lines.push('解释器：' + (platform.interpreters ?? []).map((item) => item.id + ' (apiVersion ' + item.apiVersion + ')').join('、'));
+  lines.push('解释器：' + (platform.interpreters ?? []).map((item) => item.id + ' v' + item.version + '（' + item.kind + '）').join('、'));
   lines.push('支持 schema：' + (platform.supports?.schema ?? []).join(', '));
   lines.push('支持类型：' + Object.entries(platform.supports?.types ?? {}).map(([kind, versions]) => kind + '@' + versions.join('/')).join(' · '));
   lines.push('支持能力：' + Object.entries(platform.supports?.capabilities ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · '));
@@ -132,11 +132,18 @@ function renderSkills(result) {
 
 function renderPlatform(result) {
   const data = result.data ?? {};
-  const lines = ['平台 ' + data.platform?.name + ' ' + data.platform?.version + ' · schemaVersion ' + data.schemaVersion];
+  const lines = ['平台 ' + data.platform?.name + ' ' + data.platform?.version + ' · schemaVersion ' + data.schemaVersion + ' · 数据类型 ' + (data.kinds ?? []).join(' / ')];
+  const groups = new Map();
   for (const interpreter of data.interpreters ?? []) {
+    if (!groups.has(interpreter.kind)) groups.set(interpreter.kind, []);
+    groups.get(interpreter.kind).push(interpreter);
+  }
+  for (const [kind, items] of groups) {
     lines.push('');
-    lines.push('解释器 ' + interpreter.id + '（apiVersion ' + interpreter.apiVersion + '）');
-    lines.push('  schema : ' + (interpreter.supports.schema ?? []).join(', '));
+    lines.push(kind + ' 解释器');
+    for (const interpreter of items) {
+      lines.push('  ' + interpreter.id + ' (v' + interpreter.version + ') · 支持 schema ' + (interpreter.supports.schema ?? []).join(', '));
+    }
   }
   const table = (source) => Object.entries(source ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · ');
   lines.push('');
