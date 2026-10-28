@@ -14,6 +14,7 @@
     "precli": "node scripts/build-cli.mjs --quiet",
     "cli:src": "node bin/gothere.mjs",
     "build:cli": "node scripts/build-cli.mjs",
+    "build:bin": "node scripts/build-binary.mjs",
     "css": "node scripts/css.mjs",
     "css:watch": "node scripts/css.mjs --watch",
     "build": "node scripts/build.mjs && node scripts/build-cli.mjs",

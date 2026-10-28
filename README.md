@@ -66,6 +66,45 @@ pnpm cli level diff first-bridge quiet-corner --json
 把制品单独复制到临时目录里跑一遍内置关卡，确保它在没有 `src/`、`levels/`、
 `node_modules/` 的地方也能工作。
 
+## 单一可执行文件
+
+不装 Node 也能跑：用 Node 26 自带的 SEA（single executable application）把 CLI 嵌进
+node 本体，产出一个二进制。
+
+```sh
+pnpm build:bin                          # → dist/gothere-linux-x64（约 144 MB）
+./dist/gothere-linux-x64 --version
+./dist/gothere-linux-x64 level simulate all-together --inputs '[{"tick":150,"source":"axe"},{"tick":200,"source":"guard"},{"tick":520,"source":"bridge-switch"},{"tick":800,"source":"lift-switch"}]'
+```
+
+构建脚本会在空目录里跑一遍 `--version`、`level list`、`level simulate` 才算成功，
+所以产出的文件是自证可用的。三条硬约束：
+
+- **不能交叉编译**：SEA 拿当前运行的 node 二进制当底，每个平台各自构建一次；
+  产物名带平台，`gothere-<平台>-<架构>[.exe]`。
+- **体积 ≈ node 本体**（约 144 MB），所以它不进 npm 包，只在 Release 里发。
+- macOS 下载后可能被 Gatekeeper 拦一次：`xattr -d com.apple.quarantine ./gothere-darwin-arm64`。
+
+## 发版：推 tag 即发布
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+`.github/workflows/release.yml` 会先校验（tag 必须等于 `package.json` 的版本、跑测试
+与分层门禁），再在三个平台各自构建单二进制，最后把下面这些挂到 GitHub Release：
+
+| 文件 | 说明 |
+|---|---|
+| `gothere-linux-x64` / `gothere-darwin-arm64` / `gothere-win32-x64.exe` | 单二进制，各自自检过 |
+| `gothere-cli.mjs` / `gothere-cli.cjs` | 单文件 CLI（ESM / CJS，后者即 SEA 用的那份） |
+| `gothere-play.html` | 单文件游戏 |
+| `SHA256SUMS.txt` | 以上全部文件的校验和 |
+
+文件名固定、版本靠 tag，所以可以直接用稳定链接，例如
+`https://github.com/dezhishen/gothere/releases/latest/download/gothere-linux-x64`。
+也可以在 Actions 页面手动触发 release 工作流并指定已有 tag。
+
 ## 手机与异地试玩
 
 ```sh
@@ -153,7 +192,9 @@ pnpm build
 - `src/main.js`：界面、输入、固定步长驱动和关卡数据面板。
 - `tests/`：契约、声明槽、解释器、用例、CLI、内容与 HTTP 测试。
 - `scripts/build.mjs`：无第三方运行时依赖的单文件打包，构建期校验并内联关卡。
-- `scripts/build-cli.mjs`：把 CLI 打成单文件独立制品（`dist/gothere-cli.mjs`）。
+- `scripts/build-cli.mjs`：把 CLI 打成单文件独立制品（`gothere-cli.mjs` 与给 SEA 用的
+  `gothere-cli.cjs`）。
+- `scripts/build-binary.mjs`：用 Node SEA 产出单二进制并在空目录自检。
 - `scripts/bundle.mjs` / `scripts/content.mjs`：两条制品共用的模块打包器与内容读取。
 - `scripts/check-layers.mjs`：分层门禁（依赖只向下、声明槽必须是叶子模块且不含函数）。
 - `scripts/css.mjs`：调用 Tailwind CLI 编译样式；`scripts/dev.mjs` 同时跑样式监听与开发服务器。

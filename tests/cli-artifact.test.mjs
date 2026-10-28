@@ -5,7 +5,8 @@ import { cp, mkdtemp, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCli } from '../scripts/build-cli.mjs';
+import { buildCli, buildCliSources } from '../scripts/build-cli.mjs';
+import { binaryName } from '../scripts/build-binary.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let artifact = null;
@@ -61,4 +62,24 @@ test('the package points its bin at the artifact', async () => {
   assert.equal(pkg.bin.gothere, 'dist/gothere-cli.mjs', 'bin 应当指向独立制品');
   assert.ok(pkg.scripts['build:cli'], '制品要有自己的构建脚本');
   assert.ok(pkg.files.includes('dist/gothere-cli.mjs'), '发布内容里要带上制品');
+});
+
+test('the CommonJS form exists for SEA and behaves like the ESM one', async () => {
+  const { cjs, esm } = await buildCliSources();
+  assert.ok(!/^import\s/m.test(cjs), 'CJS 形态不能留 import 语句');
+  for (const match of cjs.matchAll(/require\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+    assert.ok(match[1].startsWith('node:'), 'CJS 形态不许 require 外部模块：' + match[1]);
+  }
+  assert.ok(!/^await\s/m.test(cjs), 'CJS 没有顶层 await：await 必须收进 async IIFE');
+  assert.ok(esm.includes("import { readFile } from 'node:fs/promises';"));
+
+  const asCjs = spawnSync(process.execPath, ['dist/gothere-cli.cjs', 'level', 'list', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  assert.equal(asCjs.status, 0, asCjs.stderr);
+  assert.deepEqual(JSON.parse(asCjs.stdout).data.levels.length, 6);
+});
+
+test('binary names are per platform so releases never collide', () => {
+  assert.equal(binaryName('linux', 'x64'), 'gothere-linux-x64');
+  assert.equal(binaryName('darwin', 'arm64'), 'gothere-darwin-arm64');
+  assert.equal(binaryName('win32', 'x64'), 'gothere-win32-x64.exe');
 });
