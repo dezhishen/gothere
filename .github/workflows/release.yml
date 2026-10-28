@@ -62,17 +62,24 @@ jobs:
       - name: Build agent skill package (node flavor)
         run: node scripts/build-skill.mjs
 
+      # 统一摊平到 release/ 再上传：artifact 会保留相对路径，
+      # 直接传 dist/… 与 skills/… 会在发布侧变成目录，校验和那一步就会炸。
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp dist/gothere-play.html dist/gothere-cli.mjs dist/gothere-cli.cjs release/
+          cp dist/gothere-agent-node.* release/
+          cp skills/gothere-levels/SKILL.md release/
+          ls -l release
+
       - name: Upload platform-independent artifacts
         uses: actions/upload-artifact@v5
         with:
           name: bundle
           if-no-files-found: error
-          path: |
-            dist/gothere-play.html
-            dist/gothere-cli.mjs
-            dist/gothere-cli.cjs
-            dist/gothere-agent-node.*
-            skills/gothere-levels/SKILL.md
+          path: release/*
 
   targets:
     name: 制品 ${{ matrix.target }}
@@ -148,8 +155,8 @@ jobs:
         run: |
           set -euo pipefail
           cd release
+          find . -type f ! -name SHA256SUMS.txt | sort | xargs -r sha256sum > SHA256SUMS.txt
           ls -l
-          sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Publish release
