@@ -176,6 +176,7 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 
 ```text
 desktop/main.cjs                 Electron 主进程（窗口 / 菜单 / 外链与权限策略）
+skills/gothere-levels/SKILL.md  Agent 技能说明书（由 schema 生成，入库）
 bin/gothere.mjs                  CLI shell（源码树调试用）
 dist/gothere-cli.mjs             交付的 CLI 独立制品（单文件，内置关卡内联）
 src/app/cli.js                   CLI 产品逻辑（端口注入，可打包）

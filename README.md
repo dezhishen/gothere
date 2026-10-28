@@ -123,8 +123,13 @@ node scripts/build-skill.mjs --binary dist/gothere-linux-x64
                                         # → dist/gothere-agent-linux-x64.tar.gz
 ```
 
-`SKILL.md` 里的类别、字段、声明槽、类型、状态、范例关卡全部由 `describe()` 与关卡清单
-生成，所以不会和实现漂移（`tests/release.test.mjs` 会逐项比对）。
+技能源文件就在仓库里：**`skills/gothere-levels/SKILL.md`**。它不是手写的第二份文档——
+类别、字段、声明槽、类型、状态、范例关卡全部由 `describe()` 与关卡清单生成，改完 schema
+跑一次 `pnpm build:agent` 重新生成即可；`pnpm check:skill`（以及 `pnpm test`）会比对
+仓库里那份是不是最新的，跑偏了就失败。
+
+`skills/` 里放的是「Agent 怎么用这个项目」的说明书，和代码同仓库、同 PR 评审；Release
+里的技能包只是把它和可执行文件装进一个压缩包。
 
 ### 桌面端客户端
 
@@ -216,6 +221,8 @@ pnpm build
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
   `item`），每类工厂按同一份接口产出自己的类型，注册只能落到已有类型上。
 - `src/app/`：用例层、内容源端口、错误码与 Agent skill 清单。
+- `skills/gothere-levels/SKILL.md`：Agent 技能说明书（**生成物，入库**；改 schema 后
+  `pnpm build:agent` 重新生成）。
 - `levels/*.level.json` + `levels/manifest.json`：关卡内容制品。
 - `bin/gothere.mjs`：源码树上的 CLI shell（把 process / 文件系统接给 `src/app/cli.js`）；
   交付用的是独立制品 `dist/gothere-cli.mjs`。

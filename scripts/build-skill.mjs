@@ -13,6 +13,9 @@ import { buildCli } from './build-cli.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SKILL_NAME = 'gothere-levels';
+// 技能源文件就放在仓库里：skills/<name>/SKILL.md，跟着 PR 一起评审、在 GitHub 上直接可读。
+// 它由 schema 生成（不是手写），所以不会被改出一个和实现不一致的版本。
+const SKILL_FILE = resolve(ROOT, 'skills', SKILL_NAME, 'SKILL.md');
 
 const bullet = (items) => items.map((item) => '- ' + item).join('\n');
 
@@ -213,8 +216,29 @@ ${levels.map((level) => '- `' + level.id + '` · ' + level.name + '（' + level.
 `;
 }
 
-export async function buildSkill({ quiet = false, binary = null } = {}) {
+/** 生成仓库里的技能文件：skills/<name>/SKILL.md。 */
+export async function writeSkillFile() {
   const markdown = await buildSkillMarkdown();
+  await mkdir(resolve(ROOT, 'skills', SKILL_NAME), { recursive: true });
+  await writeFile(SKILL_FILE, markdown, 'utf8');
+  return { path: SKILL_FILE, markdown };
+}
+
+/** 只检查仓库里的技能文件是不是最新的（CI / 提交前用，不写盘）。 */
+export async function checkSkillFile() {
+  const markdown = await buildSkillMarkdown();
+  let current = null;
+  try {
+    current = await readFile(SKILL_FILE, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  return { ok: current === markdown, path: SKILL_FILE, markdown, current };
+}
+
+export async function buildSkill({ quiet = false, binary = null } = {}) {
+  const { markdown } = await writeSkillFile();
+  // 打包用的暂存目录：SKILL.md 的副本 + 可执行文件，保证解压出来就是一个自洽的技能目录。
   const dir = resolve(ROOT, 'dist', 'skill');
   await mkdir(dir, { recursive: true });
   const skillPath = resolve(dir, 'SKILL.md');
@@ -253,7 +277,17 @@ export async function buildSkill({ quiet = false, binary = null } = {}) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const argv = process.argv.slice(2);
-  const index = argv.indexOf('--binary');
-  const binary = index >= 0 ? resolve(argv[index + 1]) : null;
-  await buildSkill({ quiet: argv.includes('--quiet'), binary });
+  if (argv.includes('--check')) {
+    const result = await checkSkillFile();
+    if (!result.ok) {
+      console.error('✗ ' + result.path + ' 不是最新的：请运行 `pnpm build:agent` 重新生成。');
+      process.exitCode = 1;
+    } else {
+      console.log('✓ ' + result.path + ' 与 schema 一致');
+    }
+  } else {
+    const index = argv.indexOf('--binary');
+    const binary = index >= 0 ? resolve(argv[index + 1]) : null;
+    await buildSkill({ quiet: argv.includes('--quiet'), binary });
+  }
 }

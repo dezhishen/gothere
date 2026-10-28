@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { archiveName } from '../scripts/archive.mjs';
-import { buildSkill, buildSkillMarkdown } from '../scripts/build-skill.mjs';
+import { buildSkill, buildSkillMarkdown, checkSkillFile } from '../scripts/build-skill.mjs';
 import { listTypes, describe } from '../src/core/contract/registry.js';
 import { binaryName } from '../scripts/build-binary.mjs';
 import { levels } from './levels-fixture.mjs';
@@ -51,4 +51,10 @@ test('the agent package ships SKILL.md next to a runnable CLI', async () => {
   }
   const skill = await readFile(built.skill, 'utf8');
   assert.match(skill, /gothere-cli\.mjs/);
+});
+
+test('the committed skills/<name>/SKILL.md is generated, so it never drifts', async () => {
+  const result = await checkSkillFile();
+  assert.equal(result.path.endsWith('/skills/gothere-levels/SKILL.md'), true, '技能源文件要放在 skills/<name>/ 下');
+  assert.ok(result.ok, 'skills/gothere-levels/SKILL.md 与 schema 不一致：请运行 `pnpm build:agent` 重新生成');
 });

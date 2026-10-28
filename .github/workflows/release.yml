@@ -72,7 +72,7 @@ jobs:
             dist/gothere-cli.mjs
             dist/gothere-cli.cjs
             dist/gothere-agent-node.*
-            dist/skill/SKILL.md
+            skills/gothere-levels/SKILL.md
 
   binary:
     name: 单二进制 ${{ matrix.target }}
