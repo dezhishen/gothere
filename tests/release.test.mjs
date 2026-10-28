@@ -58,8 +58,24 @@ test('the agent package ships SKILL.md next to a runnable CLI', async () => {
 
 test('the committed skills/<name>/SKILL.md is generated, so it never drifts', async () => {
   const result = await checkSkillFile();
-  assert.equal(result.path.endsWith('/skills/gothere-levels/SKILL.md'), true, '技能源文件要放在 skills/<name>/ 下');
+  assert.equal(result.path.endsWith('/skills/gothere-levels/SKILL.md'), true, '技能源文件要放在 skills/<name> 下');
   assert.ok(result.ok, 'skills/gothere-levels/SKILL.md 与 schema 不一致：请运行 `pnpm build:agent` 重新生成');
+});
+
+test('the skill layout follows the usual convention: skills/<name>/SKILL.md', async () => {
+  const result = await checkSkillFile();
+  const parts = result.path.split('/');
+  assert.equal(parts.at(-1), 'SKILL.md', '文件名必须是 SKILL.md');
+  const directory = parts.at(-2);
+  assert.equal(parts.at(-3), 'skills', '必须放在仓库根的 skills/ 下');
+
+  // 前置元数据里的 name 要和目录名一致，Agent 才认得出这个技能。
+  const frontmatter = result.markdown.match(/^---\n([\s\S]*?)\n---\n/);
+  assert.ok(frontmatter, 'SKILL.md 必须有 YAML 前置元数据');
+  const name = frontmatter[1].match(/^name:\s*(.+)$/m);
+  assert.ok(name, '前置元数据必须有 name');
+  assert.equal(name[1].trim(), directory, 'name 必须与目录名一致');
+  assert.match(frontmatter[1], /^description:\s*\S/m, '前置元数据必须有 description');
 });
 
 test('the platform version reported by the code matches package.json', () => {
