@@ -14,6 +14,7 @@ export const region = Object.freeze({
   hooks: Object.freeze({
     onContact(ctx, entity) {
       if (entity.state !== entity.traits.enterFrom) return;
+      if (!ctx.atFloor(entity)) return;
       if (!ctx.overlaps(entity)) return;
       entity.state = entity.traits.enterTo;
       ctx.emit(entity.traits.enterMessage + entity.label);

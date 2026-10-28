@@ -53,6 +53,14 @@ export function createMechanismFactory() {
           region: { from: 'idle', to: 'pressed', event: 'enter', message: '踩下了' },
         },
       },
+      lift: {
+        version: 1,
+        defaultWidth: 70,
+        iconOffset: 120,
+        states: [state('lower', '停在楼下'), state('upper', '停在楼上')],
+        // 楼层高度默认 440↔300，关卡可在实体上覆盖 capabilities.verticalRide。
+        capabilities: { verticalRide: {} },
+      },
     },
   });
 }

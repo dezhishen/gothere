@@ -2,7 +2,7 @@
 
 一个轻松诙谐、以关卡数据驱动的 2D 环境解谜原型。主角是一个认准目的地就往前走的倔家伙；点击场景中的编号机关，或下方同名按钮，帮助他越过麻烦、到达目的地。
 
-最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成四关可玩原型、JSON 规则、可注册的文档解释器与能力实现、确定性回放和手机浏览器试玩。
+最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成五关可玩原型、JSON 规则、可注册的文档解释器与能力实现、多层地图、确定性回放和手机浏览器试玩。
 
 ![游戏原型：旅行者、伸缩木桥和目的地旗帜](docs/images/gameplay.png)
 
@@ -61,7 +61,7 @@ pnpm build
 
 构建会先用 Tailwind 编译 `src/styles/app.css`，再把样式、脚本和地图打成单文件。
 
-生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和四张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
+生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和五张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
 
 ## 发布到 GitHub Pages
 
@@ -89,13 +89,15 @@ pnpm build
 - 「需要一点提示？」显示本关的时序提示。
 - 「关卡数据」支持 JSON 编辑、文件导入、校验、加载、导出。加载无效数据不会替换当前关卡。
 
-## 四张关卡
+## 五张关卡
 
 1. 桥呢？桥呢！：开关改变木桥状态，验证点击和因果。
 2. 借过一下：风扇仅停 4 秒；踩下压力板后自动开门。
 3. 赶个巧：木桥保持 5 秒，风扇保持 4 秒，需要分时操作。
 4. 斧头与锤子：走过斧头会自动拿起（拿着就不扎脚），点一下放进身后的地面；
    再拿起锤子点一下，木栅门才开。
+5. 上下两趟：地图是多层的——走进电梯轿厢再点开关，电梯把人送到二楼，
+   然后沿楼梯走回地面。
 
 关卡是 `levels/*.level.json` 内容制品，不参与编译；每张地图都可以不依赖画面运行，
 没有单独的关卡专用代码。
@@ -128,7 +130,7 @@ pnpm build
 
 当前空间为 1200×640，地面高度 440；角色只向右自动行走，speed 单位为世界单位/秒。地面由水平区间组成，桥延伸时补足地面。渲染器可以完全替换。
 
-实体类型（预设）：switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、axe 与 hammer（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。
+实体类型（预设）：机关族 switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、lift（lower/upper）；物品族 axe 与 hammer（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。
 
 规则含 `on: { type: "click" | "enter", source: "entity-id" }`，可选 `if: [{entity, state}]`，和 `actions`。click 只接受开关或危险物；enter 只接受压力板。动作支持 `{type:"set",target,state}` 和 `{type:"after",ticks,actions}`。未知能力、非法引用、重复 ID 和错误状态会在加载前拒绝。
 

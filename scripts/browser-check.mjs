@@ -38,7 +38,7 @@ try {
   check(!/梦游|梦醒|晚安/.test(await page.locator('body').innerText()), 'sleepwalking setting is removed');
   await page.screenshot({ path:artifact('desktop.png'),fullPage:true });
   check(await status(page) === '准备出发', 'initial scene is ready');
-  check(await page.locator('.level-tab').count() === 4, 'four levels available');
+  check(await page.locator('.level-tab').count() === 5, 'five levels available');
   await page.locator('#speed').click(); await page.locator('#speed').click();
   await page.getByRole('button',{name:'出发！',exact:true}).click();
   await page.getByRole('button',{name:'操作：木桥开关',exact:true}).click();
@@ -80,6 +80,14 @@ try {
   await settle(page, 8500);
   check(await status(page) === '终于到了', 'portable items open the way');
   console.log('PASS desktop: portable items (axe / hammer)');
+
+  await page.getByRole('button',{name:'关卡 5：上下两趟',exact:true}).click();
+  await page.locator('#play').click();
+  await settle(page, 3300);
+  await page.getByRole('button',{name:'操作：电梯开关',exact:true}).click();
+  await settle(page, 14000);
+  check(await status(page) === '终于到了', 'the lift and the stairs carry the traveller');
+  console.log('PASS desktop: multi-floor map (stairs / lift)');
 
   await page.locator('#reset').click(); await page.locator('#play').click(); await settle(page, 250);
   await page.locator('#play').click();

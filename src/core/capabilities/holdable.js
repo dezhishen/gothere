@@ -19,6 +19,7 @@ export const holdable = Object.freeze({
         if (holder !== entity.id) return;
         const max = ctx.world.width - entity.width;
         entity.x = Math.max(0, Math.min(max, ctx.state.actor.x + traits.holdOffset));
+        entity.y = ctx.state.actor.y;
         return;
       }
       if (entity.state !== traits.holdFrom) return;
@@ -31,10 +32,12 @@ export const holdable = Object.freeze({
         return;
       }
       if (holder && holder !== entity.id) return;
+      if (!ctx.atFloor(entity)) return;
       if (!ctx.overlaps(entity, 10)) return;
       const limit = ctx.world.width - entity.width;
       entity.state = traits.holdTo;
       entity.x = Math.max(0, Math.min(limit, ctx.state.actor.x + traits.holdOffset));
+      entity.y = ctx.state.actor.y;
       ctx.state.actor.holding = entity.id;
       ctx.emit('拿起了' + entity.label);
     },

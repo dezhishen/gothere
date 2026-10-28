@@ -14,6 +14,7 @@ export const damageOnContact = Object.freeze({
     onContact(ctx, entity) {
       if (entity.state !== entity.traits.harmsInState) return;
       if (ctx.state.actor.holding === entity.id) return;
+      if (!ctx.atFloor(entity)) return;
       if (!ctx.overlaps(entity, 10)) return;
       ctx.lose(entity.traits.harmReason, entity.traits.harmMessage);
     },

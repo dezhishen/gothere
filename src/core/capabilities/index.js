@@ -8,6 +8,7 @@ import { damageOnContact } from './damageOnContact.js';
 import { extendGround } from './extendGround.js';
 import { holdable } from './holdable.js';
 import { region } from './region.js';
+import { verticalRide } from './verticalRide.js';
 
 const ID_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 const registry = new Map();
@@ -40,7 +41,7 @@ export function listCapabilities() {
 /** 恢复默认注册表：平台编译进哪些能力实现，就由这份清单决定。 */
 export function resetCapabilities() {
   registry.clear();
-  for (const capability of [blockPath, clickable, damageOnContact, extendGround, holdable, region]) {
+  for (const capability of [blockPath, clickable, damageOnContact, extendGround, holdable, region, verticalRide]) {
     registerCapability(capability);
   }
 }

@@ -1,5 +1,6 @@
 // 确定性内核：固定 60 tick 推进、相位顺序固定、预算超限即失败、快照深拷贝。
-// 它只读已编译模型，按「实体声明顺序 → 能力声明顺序」调度能力 hook，不认识任何具体能力。
+// 角色脚底高度由「地形（地面段 + 楼梯）+ 动态地面（桥、电梯轿厢）」决定；
+// 只读已编译模型，按「实体声明顺序 → 能力声明顺序」调度 hook，不认识任何具体能力。
 
 import { getCapability } from '../capabilities/index.js';
 import { compileModel } from '../contract/compile.js';
@@ -10,10 +11,12 @@ import { validateDoc } from '../contract/validate.js';
 const clone = (value) => structuredClone(value);
 
 /**
- * 相位顺序即语义：接触（区域 / 拾取 / 接触伤害）→ 支撑 → 阻挡 → 终点。
+ * 相位顺序即语义：接触（区域 / 拾取 / 伤害 / 乘梯）→ 阻挡 → 终点。
  * 新增相位必须改这张表，并补一条 golden 回放回归。
  */
 export const HOOK_PHASES = Object.freeze(['onContact', 'onBlock']);
+
+const quantize = (value) => Math.round(value * 1e6) / 1e6;
 
 /** 未编译的输入一律先走 playable 全量校验，模型则直接运行。 */
 function modelOf(input) {
@@ -26,6 +29,16 @@ function modelOf(input) {
     throw error;
   }
   return compileModel(input);
+}
+
+/** 实体能提供的地面高度：桥铺好时的自身高度，或电梯轿厢当前所在楼层。 */
+function groundOf(entity) {
+  const traits = entity.traits;
+  if (traits.groundInState !== undefined && entity.state === traits.groundInState) return entity.y;
+  if (traits.rideUpperState !== undefined) {
+    return entity.state === traits.rideUpperState ? traits.rideUpperY : traits.rideLowerY;
+  }
+  return null;
 }
 
 export function createSimulation(input) {
@@ -48,7 +61,7 @@ export function createSimulation(input) {
       tick: 0,
       status: 'ready',
       reason: null,
-      actor: { x: model.actor.x, holding: null },
+      actor: { x: model.actor.x, y: model.actor.y, holding: null, riding: null },
       entities: Object.fromEntries(model.entities.map((entity) => [entity.id, { ...entity }])),
       events: [],
       clicks: 0,
@@ -94,21 +107,34 @@ export function createSimulation(input) {
     }
   };
 
-  const supported = (from, to) => {
-    const spans = [
-      ...model.platforms.map((platform) => [platform.x, platform.x + platform.width]),
-      ...Object.values(state.entities)
-        .filter((entity) => entity.traits.groundInState !== undefined && entity.state === entity.traits.groundInState)
-        .map((entity) => [entity.x, entity.x + entity.width]),
-    ].sort((a, b) => a[0] - b[0]);
-    let covered = from;
-    for (const [left, right] of spans) {
-      if (right < covered) continue;
-      if (left > covered + 0.000001) return false;
-      covered = Math.max(covered, right);
-      if (covered >= to) return true;
+  /** 某个 x 上所有可站的表面高度。 */
+  const surfacesAt = (x) => {
+    const surfaces = model.terrain ? model.terrain.at(x).map((surface) => surface.y) : [];
+    for (const entity of Object.values(state.entities)) {
+      const y = groundOf(entity);
+      if (y === null) continue;
+      if (x >= entity.x && x <= entity.x + entity.width) surfaces.push(y);
     }
-    return false;
+    return surfaces;
+  };
+
+  /** 取离上一 tick 脚底最近、且在容差内的表面；没有就是踩空。 */
+  const resolveSurface = (x, previousY) => {
+    let best = null;
+    for (const y of surfacesAt(x)) {
+      const distance = Math.abs(y - previousY);
+      if (distance > LIMITS.stepTolerance) continue;
+      if (best === null || distance < Math.abs(best - previousY)) best = y;
+    }
+    return best;
+  };
+
+  /** 正在乘梯时，脚底跟着轿厢的当前楼层走（不受单步容差限制）。 */
+  const ridingGround = () => {
+    const id = state.actor.riding;
+    if (!id) return null;
+    const entity = state.entities[id];
+    return entity ? groundOf(entity) : null;
   };
 
   const runPhase = (phase, ctx) => {
@@ -146,30 +172,37 @@ export function createSimulation(input) {
     pending = [];
     if (state.status !== 'running') return;
 
-    // ③ 行走与量化
+    // ③ 行走与脚底高度：整段都要有地面（两端 + 中点采样，避免窄缝被跳过）
     const from = state.actor.x;
-    const to = Math.min(model.goal.x, Math.round((from + model.actor.speed / TICKS_PER_SECOND) * 1e6) / 1e6);
+    const to = Math.min(model.goal.x, quantize(from + model.actor.speed / TICKS_PER_SECOND));
+    const attached = ridingGround();
+    let surfaceY = attached === null ? state.actor.y : attached;
+    for (const x of [from, (from + to) / 2, to]) {
+      const next = resolveSurface(x, surfaceY);
+      if (next === null) {
+        lose('fall', MESSAGES.fall);
+        return;
+      }
+      surfaceY = next;
+    }
     state.actor.x = to;
-    // 所有能力共用同一套「触及」定义，避免拾取比伤害慢一个容差。
-    const overlaps = (entity, margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
-    const ctx = { state, world: model.world, from, to, overlaps, emit, lose, trigger };
+    state.actor.y = surfaceY;
 
-    // ④ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害
+    // 所有能力共用同一套「触及 / 同层」定义。
+    const overlaps = (entity, margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
+    const atFloor = (entity) => Math.abs(entity.y - state.actor.y) <= LIMITS.floorTolerance;
+    const ctx = { state, world: model.world, from, to, overlaps, atFloor, emit, lose, trigger };
+
+    // ④ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害、乘梯
     runPhase('onContact', ctx);
     if (state.status !== 'running') return;
 
-    // ⑤ 支撑
-    if (!supported(from, to)) {
-      lose('fall', MESSAGES.fall);
-      return;
-    }
-
-    // ⑥ 阻挡类能力
+    // ⑤ 阻挡类能力
     runPhase('onBlock', ctx);
     if (state.status !== 'running') return;
 
-    // ⑦ 终点与超时
-    if (to >= model.goal.x) {
+    // ⑥ 终点与超时
+    if (to >= model.goal.x && Math.abs(state.actor.y - model.goal.y) <= LIMITS.floorTolerance) {
       state.status = 'won';
       emit(MESSAGES.won, 'won');
     } else if (state.tick >= LIMITS.maxTicks) {

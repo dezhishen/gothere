@@ -21,7 +21,7 @@ const play = (doc, inputs = []) => {
 
 test('capabilities are the implementation units and declare their own vocabulary', () => {
   const ids = listCapabilities().map((capability) => capability.id);
-  assert.deepEqual(ids, ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'region']);
+  assert.deepEqual(ids, ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'region', 'verticalRide']);
   for (const capability of listCapabilities()) {
     assert.equal(typeof capability.traits, 'function', capability.id + ' 必须派生 traits');
     assert.ok(Array.isArray(capability.events), capability.id + ' 必须声明事件列表');

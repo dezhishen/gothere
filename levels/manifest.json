@@ -16,6 +16,10 @@
     {
       "id": "the-axe",
       "file": "the-axe.level.json"
+    },
+    {
+      "id": "up-and-down",
+      "file": "up-and-down.level.json"
     }
   ]
 }

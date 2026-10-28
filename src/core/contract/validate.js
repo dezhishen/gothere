@@ -74,6 +74,7 @@ export function validateDoc(input, options = {}) {
     actor: input.actor,
     goal: input.goal,
     platforms: input.platforms,
+    stairs: input.stairs,
   });
   for (const item of mapResult.errors) fail(item.code, item.path, item.message);
 
@@ -95,6 +96,9 @@ export function validateDoc(input, options = {}) {
     }
     if (entity.width !== undefined && !inRange(entity.width, LIMITS.minWidth, LIMITS.maxWidth)) {
       fail('SCHEMA_INVALID', path + '.width', '实体宽度超出范围：' + String(entity.id));
+    }
+    if (entity.y !== undefined && !inRange(entity.y, LIMITS.minFloorY, LIMITS.maxFloorY)) {
+      fail('SCHEMA_INVALID', path + '.y', '实体所在楼层 y 超出范围：' + String(entity.id));
     }
     if (isNumber(entity.x) && entity.x + (isNumber(entity.width) ? entity.width : LIMITS.defaultWidth) > WORLD.width) {
       fail('SCHEMA_INVALID', path + '.width', '实体超出地图边界：' + String(entity.id));

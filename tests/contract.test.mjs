@@ -18,10 +18,10 @@ test('registry describes types, capabilities and fields from a single table', ()
   assert.deepEqual(described.events, ['click']);
   assert.deepEqual(described.capabilities.map((item) => item.name), ['clickable']);
   assert.ok(described.fields.some((field) => field.key === 'x'));
-  assert.equal(describeType('lift'), null);
+  assert.equal(describeType('ropeBridge'), null);
   const all = describeType();
   assert.ok(all.types.length >= 7);
-  assert.deepEqual(all.capabilities.map((item) => item.id).sort(), ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'region']);
+  assert.deepEqual(all.capabilities.map((item) => item.id).sort(), ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'region', 'verticalRide']);
 });
 
 test('capabilities are data: a preset can gain an event without new code', () => {

@@ -53,7 +53,7 @@ function loadLevel(next, index = -1) {
     hotspot.setAttribute('aria-label', '操作：' + entity.label);
     hotspot.style.left = ((entity.x + (entity.width ?? 28) / 2) / 1200 * 100) + '%';
     const iconOffset = typeDescriptor(entity.kind)?.iconOffset ?? 91;
-    hotspot.style.top = ((440 - iconOffset) / 640 * 100) + '%';
+    hotspot.style.top = (((entity.y ?? 440) - iconOffset) / 640 * 100) + '%';
     const number = document.createElement('span'); number.textContent = String(index + 1); hotspot.append(number);
     const label = document.createElement('span'); label.className = 'hotspot-label'; label.textContent = entity.label; hotspot.append(label);
     const action = document.createElement('button'); action.className = 'mechanism-action'; action.dataset.action = entity.id;

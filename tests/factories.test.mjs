@@ -18,7 +18,7 @@ test('the system has exactly three content factories: map / mechanism / item', (
   const factories = listFactories();
   assert.deepEqual(factories.map((factory) => factory.category), ['map', 'mechanism', 'item']);
   assert.deepEqual(getFactory('map').kinds, []);
-  assert.deepEqual(getFactory('mechanism').kinds, ['switch', 'bridge', 'gate', 'hazard', 'plate']);
+  assert.deepEqual(getFactory('mechanism').kinds, ['switch', 'bridge', 'gate', 'hazard', 'plate', 'lift']);
   assert.deepEqual(getFactory('item').kinds, ['axe', 'hammer']);
 });
 
@@ -87,7 +87,21 @@ test('the map factory owns the world section and the terrain query', () => {
   assert.ok(behind.errors.some((error) => error.path === 'goal'));
 
   const terrain = map.terrain(base);
-  assert.deepEqual(terrain.spans, [[0, 400], [600, 1200]]);
-  assert.equal(terrain.supports(200), true);
+  assert.deepEqual(terrain.at(200).map((surface) => surface.y), [440]);
+  assert.deepEqual(terrain.at(500), []);
   assert.equal(terrain.supports(500), false);
+  assert.equal(terrain.resolve(200, 440), 440);
+  assert.equal(terrain.resolve(500, 440), null, '跨层不能直接走过去');
+
+  const withStairs = map.terrain({
+    platforms: [{ x: 0, width: 400, y: 440 }, { x: 600, width: 600, y: 240 }],
+    stairs: [{ x: 400, width: 200, fromY: 440, toY: 240 }],
+  });
+  let walked = 440;
+  for (let x = 400; x <= 600; x += 1) {
+    walked = withStairs.resolve(x, walked);
+    assert.notEqual(walked, null, 'x=' + x + ' 处应该还踩得到楼梯');
+  }
+  assert.equal(walked, 240, '走完楼梯后到达楼上');
+  assert.equal(withStairs.resolve(600, 440), null, '一步落差过大就算跳不过去');
 });

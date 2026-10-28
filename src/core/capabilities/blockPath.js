@@ -13,6 +13,7 @@ export const blockPath = Object.freeze({
   hooks: Object.freeze({
     onBlock(ctx, entity) {
       if (entity.state !== entity.traits.blocksInState) return;
+      if (!ctx.atFloor(entity)) return;
       if (!ctx.overlaps(entity, 10)) return;
       ctx.lose(entity.traits.blockReason, entity.traits.blockMessage);
     },

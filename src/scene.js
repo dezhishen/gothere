@@ -62,7 +62,7 @@ export function createRenderer(canvas) {
     for(let i=0;i<320;i++){ctx.fillStyle=i%2?'#ffffff16':'#56693d08';ctx.fillRect(noise(i+400)*1200,noise(i+800)*640,1.2,1.2);}
   }
   function platform(p) {
-    const x=p.x,w=p.width,y=440;
+    const x=p.x,w=p.width,y=p.y??440;
     const soil=ctx.createLinearGradient(0,y,0,640);soil.addColorStop(0,'#a0b180');soil.addColorStop(1,'#b7c79c');
     path((q)=>{q.moveTo(x,y+4);q.quadraticCurveTo(x+Math.min(w/2,14),y-4,x+26,y-3);q.lineTo(x+w-20,y-3);q.quadraticCurveTo(x+w,y-5,x+w,y+11);q.lineTo(x+w,640);q.lineTo(x,640);q.closePath();},soil);
     path((q)=>{q.moveTo(x,y+2);q.quadraticCurveTo(x+w*.3,y-7,x+w*.6,y-1);q.quadraticCurveTo(x+w*.8,y+3,x+w,y);},null,'#7b9463',5);
@@ -71,7 +71,7 @@ export function createRenderer(canvas) {
     for(let i=0;i<Math.floor(w/75);i++)tuft(x+22+i*75+noise(i)*20,y-3,.65+noise(i)*.3);
   }
   function bridge(e) {
-    const y=440,x=e.x,w=e.width;
+    const y=e.y??440,x=e.x,w=e.width;
     if(e.state==='extended') {
       line(x,y+4,x+w,y+4,'#8c7857',5);
       for(let i=0;i<w/15;i++){rect(x+i*15,y-4,13,9,2,'#c5b083','#8d805b');line(x+i*15+3,y-1,x+i*15+10,y-1,'#ded0a8',1);}
@@ -132,6 +132,32 @@ export function createRenderer(canvas) {
     line(-6,-49,6,-49,'#c3ccd1',2);
     ctx.restore();
   }
+  // 楼梯：一串实心台阶，高度由地图地形决定；画出来只是为了看懂。
+  function stairs(s) {
+    const {x,width,fromY,toY}=s;
+    const steps=Math.max(4,Math.round(Math.abs(toY-fromY)/12));
+    for(let i=0;i<steps;i+=1){
+      const t0=i/steps,t1=(i+1)/steps;
+      const x0=x+width*t0,x1=x+width*t1,y0=fromY+(toY-fromY)*t0,y1=fromY+(toY-fromY)*t1;
+      rect(x0,Math.min(y0,y1)-8,Math.max(2,x1-x0+1),8+Math.abs(y1-y0)+2,1,'#c9bb95','#8f956a');
+    }
+    path((q)=>{q.moveTo(x,fromY+3);q.lineTo(x+width,toY+3);},null,'#7b9463',3);
+  }
+  // 电梯：井道横跨两层，轿厢画在「当前楼层」（调用方已平移到该层）。
+  function lift(e) {
+    const x=e.x,w=e.width,t=e.traits??{};
+    const carFloor=t.rideUpperState===undefined?440:(e.state===t.rideUpperState?t.rideUpperY:t.rideLowerY);
+    const localY=(worldY)=>worldY-carFloor+440;
+    const upperY=t.rideUpperY??300,lowerY=t.rideLowerY??440;
+    const top=Math.min(localY(upperY),localY(lowerY))-96;
+    const bottom=Math.max(localY(upperY),localY(lowerY))+6;
+    for(const px of [x-6,x+w-4])rect(px,top,10,bottom-top,3,'#8fa374');
+    for(let i=0;i<Math.floor((bottom-top)/22);i+=1)line(x-2,top+12+i*22,x+w+2,top+12+i*22,'#86996f',1.5);
+    rect(x+4,440-92,w-8,86,6,'#c8d0b0','#7f8f6a');
+    for(let i=0;i<2;i+=1)line(x+14,440-70+i*20,x+w-14,440-70+i*20,'#9aa886',2);
+    ctx.save();ctx.textAlign='center';ctx.fillStyle='#5f7050';ctx.font='11px "Microsoft YaHei", sans-serif';
+    ctx.fillText(e.label??'',x+w/2,top-8);ctx.restore();
+  }
   // 缺失渲染实现时的占位：画面降级，但校验与模拟不受影响。
   function placeholder(e) {
     rect(e.x,404,e.width,36,7,'#d9d3b7','#a3a97e');
@@ -154,7 +180,7 @@ export function createRenderer(canvas) {
     const x=snapshot.actor.x,walking=snapshot.status==='running',lost=snapshot.status==='lost';
     const phase=walking&&!reducedMotion?Math.sin(snapshot.tick*.15):0;
     const fall=lost&&snapshot.reason==='fall'?(reducedMotion?65:Math.min(fallAge*220,160)):0;
-    ctx.save();ctx.translate(x,440+fall);if(fall)ctx.rotate(Math.min(fallAge*.6,.5));
+    ctx.save();ctx.translate(x,(snapshot.actor.y??440)+fall);if(fall)ctx.rotate(Math.min(fallAge*.6,.5));
     ellipse(0,3,19,4,0,'#58714825');
     const leg=(offset,delta)=>{line(offset,-19,offset+delta,-4,'#788b75',7);line(offset+delta-2,-3,offset+delta+8,-3,'#8f785d',5);};
     leg(-5,-phase*6);leg(5,phase*6);
@@ -184,18 +210,24 @@ export function createRenderer(canvas) {
       background(time);
       tree(47,433,.9);tree(1170,435,.8);
       for(const p of level.platforms)platform(p);
+      for(const s of level.stairs??[])stairs(s);
       const isGround=(e)=>Boolean(e.traits)&&e.traits.groundInState!==undefined;
+      const rideFloor=(e)=>e.state===e.traits.rideUpperState?e.traits.rideUpperY:e.traits.rideLowerY;
+      const floorOf=(e)=>e.traits&&e.traits.rideUpperState!==undefined?rideFloor(e):(e.y??440);
       for(const e of Object.values(snapshot.entities))if(isGround(e))bridge(e);
-      destination(level.goal);
+      ctx.save();ctx.translate(0,(level.goal.y??440)-440);destination(level.goal);ctx.restore();
       for(const e of Object.values(snapshot.entities)){
         if(isGround(e))continue;
+        ctx.save();ctx.translate(0,floorOf(e)-440);
         if(e.kind==='switch')lever(e);
         else if(e.kind==='hazard')fan(e,snapshot.tick/60);
         else if(e.kind==='gate')gate(e);
         else if(e.kind==='plate')plate(e);
         else if(e.kind==='axe')axe(e);
         else if(e.kind==='hammer')hammer(e);
+        else if(e.kind==='lift')lift(e);
         else placeholder(e);
+        ctx.restore();
       }
       walker(snapshot,time,fallAge,reducedMotion);
       // Foreground wildflowers, only on actual ground.
