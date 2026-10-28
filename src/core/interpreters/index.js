@@ -9,7 +9,7 @@
 import { COMMON_FIELDS, listTypes } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
 import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
-import { factoryFor, getFactory, listFactories } from './factories/index.js';
+import { listFactories } from './factories/index.js';
 import { createBundleInterpreter } from './bundle-1.js';
 import { createLevelInterpreter } from './level-1.js';
 import { createManifestInterpreter } from './manifest-1.js';
@@ -96,66 +96,8 @@ export function describePlatform() {
       kinds: [...factory.kinds],
       slots: [...factory.schema.slots],
       fields: Object.freeze([...COMMON_FIELDS, ...factory.schema.slots]),
-      editor: Object.freeze({
-        label: factory.editor.label,
-        accent: factory.editor.accent,
-        labels: Object.freeze({ ...factory.editor.labels }),
-      }),
     })),
   };
-}
-
-/** 编辑器的调色板：类别 → 类型。中文名、颜色都由工厂的回调给出。 */
-export function editorPalette() {
-  return listFactories()
-    .filter((factory) => factory.kinds.length > 0)
-    .map((factory) => ({
-      category: factory.category,
-      label: factory.editor.label,
-      accent: factory.editor.accent,
-      kinds: factory.kinds.map((kind) => ({
-        kind,
-        label: factory.editor.labelOf(kind),
-        accent: factory.editor.accentOf(kind),
-        hint: factory.editor.hintOf(kind),
-      })),
-    }));
-}
-
-/**
- * 整份编辑器描述：调色板 + 关卡级字段 + 地面段字段 + 每个实体的字段与声明槽。
- * 界面照着这份数据画就行，**没有一处 switch(kind)**——新增工厂或类型，
- * 只要它在工厂里声明了 editor 回调，编辑器立刻就能编辑它。
- */
-export function describeEditor(doc) {
-  const map = getFactory('map');
-  const platforms = (doc.platforms ?? []).map((segment, index) => ({
-    index,
-    fields: map ? map.editor.platform(segment, index) : [],
-  }));
-  const entities = (doc.entities ?? []).map((entity) => {
-    const factory = factoryFor(entity.kind);
-    if (!factory) {
-      return {
-        id: entity.id, kind: entity.kind, known: false, category: null,
-        label: entity.kind, accent: '#b45a45', hint: '平台里没有注册这个类型。',
-        fields: [], declarations: [],
-      };
-    }
-    return {
-      id: entity.id,
-      kind: entity.kind,
-      known: true,
-      category: factory.category,
-      categoryLabel: factory.editor.label,
-      label: factory.editor.labelOf(entity.kind),
-      accent: factory.editor.accentOf(entity.kind),
-      hint: factory.editor.hintOf(entity.kind),
-      fields: factory.editor.fields(entity),
-      declarations: factory.editor.declarations(entity),
-    };
-  });
-  return { palette: editorPalette(), level: map ? map.editor.level(doc) : [], platforms, entities };
 }
 
 /**

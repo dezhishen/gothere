@@ -2,8 +2,6 @@
 // 工厂负责三件事：这一类的 **schema**（字段与允许的声明槽）、能产哪些类型、怎么校验自己那段数据。
 // 工厂里没有运行时行为：行为声明写在类型上，由内核按固定阶段解释。
 
-import { assertEditor, declarationEditor, entityFields, safeFields } from './editor.js';
-
 export const CATEGORIES = Object.freeze(['map', 'mechanism', 'item']);
 
 /** 工厂必须实现的接口方法——注册时按这张表校验，手写的工厂也不例外。 */
@@ -64,50 +62,6 @@ function createProduct(category, factoryVersion, kind, type) {
 }
 
 /**
- * 编辑器描述：全部由工厂自己回答，UI 不认识任何具体类型。
- * 工厂可以只写 `editor.labels`（中文名），其余走通用默认值。
- * - fields(entity)      实体面板的字段（文本/数字/下拉/标签/JSON）
- * - level(doc)          关卡级字段（地图类别用）
- * - platform(seg, i)    地面段字段（地图类别用）
- * - declarations(entity)声明槽面板；默认按类型的槽默认值反推控件
- * 连线（事件 → 动作）属于内核流程，不在这里声明。
- */
-function buildEditor(category, schema, products, spec) {
-  const labels = Object.freeze({ ...(spec?.labels ?? {}) });
-  const accents = Object.freeze({ ...(spec?.accents ?? {}) });
-  const fallbackFields = (entity) => {
-    const type = products.get(entity.kind);
-    return type ? entityFields(type, entity) : [];
-  };
-  const declarations = (entity) => {
-    if (typeof spec?.declarations === 'function') return safeFields(() => spec.declarations(entity), []);
-    const type = products.get(entity.kind);
-    if (!type) return [];
-    const slots = new Set([...Object.keys(type.slots), ...Object.keys(entity).filter((key) => type.slots[key] !== undefined)]);
-    return [...slots]
-      .filter((slot) => slot !== 'tags' || type.tags.length === 0)
-      .map((slot) => {
-        const params = entity[slot] !== undefined ? entity[slot] : type.slots[slot];
-        if (params === undefined || params === null || typeof params !== 'object') return null;
-        return declarationEditor(slot, params);
-      })
-      .filter(Boolean);
-  };
-  return Object.freeze({
-    label: spec?.label ?? schema.label ?? category,
-    accent: spec?.accent ?? '#7c8f5a',
-    labels,
-    labelOf: (kind) => labels[kind] ?? kind,
-    accentOf: (kind) => accents[kind] ?? spec?.accent ?? '#7c8f5a',
-    hintOf: (kind) => (spec?.hints ?? {})[kind] ?? '',
-    fields: (entity) => safeFields(() => spec.fields({ type: products.get(entity.kind), entity }), fallbackFields(entity)),
-    level: (doc) => safeFields(() => spec.level(doc), []),
-    platform: (segment, index) => safeFields(() => spec.platform(segment, index), []),
-    declarations,
-  });
-}
-
-/**
  * 造一个类别工厂。
  * spec: { category, version, schema, types?, parseSection?, terrain? }
  * - schema：这一类的字段与允许的声明槽（校验、面板、CLI 都读它）
@@ -120,7 +74,7 @@ function buildEditor(category, schema, products, spec) {
  */
 export function createFactory(spec) {
   if (!isObject(spec)) throw new Error('工厂描述必须是对象。');
-  const { category, version, schema, types = {}, parseSection, terrain, editor } = spec;
+  const { category, version, schema, types = {}, parseSection, terrain } = spec;
   if (!CATEGORIES.includes(category)) throw new Error('工厂类别必须是 ' + CATEGORIES.join(' / ') + '，收到 ' + String(category) + '。');
   if (!Number.isInteger(version) || version < 1) throw new Error(category + ' 工厂的 version 必须是正整数。');
   if (!isObject(schema)) throw new Error(category + ' 工厂必须声明 schema（字段与声明槽）。');
@@ -128,11 +82,9 @@ export function createFactory(spec) {
   if (!isObject(types)) throw new Error(category + ' 工厂的 types 必须是对象。');
   if (parseSection !== undefined && typeof parseSection !== 'function') throw new Error(category + ' 工厂的 parseSection 必须是函数。');
   if (terrain !== undefined && typeof terrain !== 'function') throw new Error(category + ' 工厂的 terrain 必须是函数。');
-  const editorSpec = assertEditor(editor, category);
 
   const products = new Map();
   for (const [kind, type] of Object.entries(types)) products.set(kind, createProduct(category, version, kind, type));
-  const editorApi = buildEditor(category, schema, products, editorSpec);
 
   const ok = Object.freeze({ ok: true, code: 'OK', errors: [] });
   return assertFactory(Object.freeze({
@@ -150,7 +102,6 @@ export function createFactory(spec) {
     list: () => [...products.values()],
     parseSection: parseSection === undefined ? () => ok : parseSection,
     terrain: terrain ?? null,
-    editor: editorApi,
   }));
 }
 

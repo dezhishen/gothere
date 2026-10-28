@@ -2,28 +2,10 @@ import { acceptsInput, stateLabel, typeDescriptor } from './core/contract/regist
 import { validateLevel } from './core/contract/validate.js';
 import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.js';
 import { createDocSource, createTextSource } from './app/levelSource.js';
-import { createEditor, editSnapshot } from './features/editor/ui.js';
 import { createRenderer } from './scene.js';
 
 const $ = (id) => document.getElementById(id);
 const renderer = createRenderer($('scene'));
-// 编辑器与游戏共用一块画布：编辑模式下它画草稿，试玩时画模拟。
-const editor = createEditor({
-  canvas: $('scene'),
-  draw: (doc) => renderer.draw(doc, editSnapshot(doc), {
-    time: reducedMotion ? 0 : performance.now() / 1000, reducedMotion, fallAge: 0,
-  }),
-  onPlay: (doc) => {
-    loadLevel(structuredClone(doc), -1);
-    editor.hide();
-    game.start();
-    accumulator = 0; lastHud = '';
-    updateHud(game.snapshot());
-    toast('试玩的是草稿；点「关卡编辑器」可以接着改。');
-  },
-  onExit: () => { if (level) { loadLevel(level, selected); } },
-  onChange: () => { lastEventKey = ''; },
-});
 const completed = new Set();
 const subtitles = ['THE BRIDGE SITUATION', 'A SMALL INCONVENIENCE', 'TIMING IS EVERYTHING'];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -194,10 +176,6 @@ function openData() {
   $('level-json').value = JSON.stringify(level, null, 2); $('data-error').hidden = true;
   $('data-dialog').showModal(); lastHud = ''; updateHud(game.snapshot());
 }
-$('open-editor').addEventListener('click', () => {
-  if (game && game.snapshot().status === 'running') game.pause();
-  editor.open();
-});
 $('open-data').addEventListener('click', openData);
 $('close-data').addEventListener('click', () => $('data-dialog').close());
 function showDataError(message) { $('data-error').textContent = message; $('data-error').hidden = false; }
@@ -239,7 +217,6 @@ $('open-project').addEventListener('click', async () => {
 });
 $('close-project').addEventListener('click', () => $('project-dialog').close());
 document.addEventListener('keydown', (event) => {
-  if (editor.isEditing()) return;
   if ($('data-dialog').open || $('project-dialog').open || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(event.target.tagName) || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.code === 'Space') { event.preventDefault(); togglePlay(); }
   if (event.key.toLowerCase() === 'r') resetGame();
@@ -251,7 +228,6 @@ document.addEventListener('visibilitychange', () => {
 });
 function frame(now) {
   if (!game) { requestAnimationFrame(frame); return; }
-  if (editor.isEditing()) { lastFrame = now; requestAnimationFrame(frame); return; }
   const dt = Math.min(100, Math.max(0, now - lastFrame)); lastFrame = now;
   if (game.snapshot().status === 'running') {
     accumulator += dt * speed;
@@ -269,7 +245,6 @@ window.gothere = Object.freeze({
   platform: () => describePlatform(),
   levels: () => levels.map((item) => ({ id: item.id, name: item.name })),
   validate: (doc) => validateLevel(doc),
-  editor: () => ({ editing: editor.isEditing(), doc: editor.doc(), describe: editor.describe() }),
 });
 
 // 内容源：单文件产物读内联 JSON 块（零外部请求），开发态走 HTTP 读 levels/*.level.json。
