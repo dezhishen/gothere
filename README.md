@@ -2,7 +2,7 @@
 
 一个轻松诙谐、以关卡数据驱动的 2D 环境解谜原型。主角是一个认准目的地就往前走的倔家伙；点击场景中的编号机关，或下方同名按钮，帮助他越过麻烦、到达目的地。
 
-最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成五关可玩原型、JSON 规则、可注册的文档解释器与能力实现、多层地图、确定性回放和手机浏览器试玩。
+最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成六关可玩原型、JSON 规则、可注册的文档解释器与能力实现、多层地图、巡逻与碾压类机关、确定性回放和手机浏览器试玩。
 
 ![游戏原型：旅行者、伸缩木桥和目的地旗帜](docs/images/gameplay.png)
 
@@ -61,7 +61,7 @@ pnpm build
 
 构建会先用 Tailwind 编译 `src/styles/app.css`，再把样式、脚本和地图打成单文件。
 
-生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和五张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
+生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和六张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
 
 ## 发布到 GitHub Pages
 
@@ -84,12 +84,12 @@ pnpm build
 
 - 点击「出发！」，然后轻点编号机关。机关按钮也可用键盘聚焦后操作。
 - 「暂停一下」停止时间；暂停时可单步前进。点击 1× 可切换 2×、4×。
-- 空格：开始/暂停；R：重置；1～4：切换关卡。焦点在按钮、输入框或对话框时保留原生键盘行为。
+- 空格：开始/暂停；R：重置；1～6：切换关卡。焦点在按钮、输入框或对话框时保留原生键盘行为。
 - 「回放本次」从头播放当前关卡已执行的操作。回放期间机关交互锁定。
 - 「需要一点提示？」显示本关的时序提示。
 - 「关卡数据」支持 JSON 编辑、文件导入、校验、加载、导出。加载无效数据不会替换当前关卡。
 
-## 五张关卡
+## 六张关卡
 
 1. 桥呢？桥呢！：开关改变木桥状态，验证点击和因果。
 2. 借过一下：风扇仅停 4 秒；踩下压力板后自动开门。
@@ -98,6 +98,9 @@ pnpm build
    再拿起锤子点一下，木栅门才开。
 5. 上下两趟：地图是多层的——走进电梯轿厢再点开关，电梯把人送到二楼，
    然后沿楼梯走回地面。
+6. 全都来一遍：把上面的机制摆在同一张图上。先点斧头放下（等一下要拿回来），
+   再让巡逻守卫停下，拿起钥匙才踩得开压力板；木桥只延伸 5 秒、电梯要等
+   人进轿厢再按，最后爬楼梯到二楼终点。
 
 关卡是 `levels/*.level.json` 内容制品，不参与编译；每张地图都可以不依赖画面运行，
 没有单独的关卡专用代码。
@@ -107,8 +110,8 @@ pnpm build
 - `project.md`：项目愿景、架构与后续路线。
 - `docs/design.md` / `docs/architecture.md`：平台与内容的边界、模块分层与里程碑。
 - `src/core/contract/`：类型与字段注册表、版本与支持矩阵、四层校验、编译、diff、PRNG、迁移。
-- `src/core/capabilities/`：能力实现单元（单击、延长地面、阻挡、区域、可持有、接触伤害），
-  每个能力自带 traits 与相位 hook，内核只按名字调度。
+- `src/core/capabilities/`：能力实现单元（单击、延长地面、阻挡、区域、可持有、接触伤害、
+  垂直乘坐、巡逻自走），每个能力自带 traits 与相位 hook，内核只按名字调度。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
 - `src/core/interpreters/`：两层注册表。数据制品解释器固定 4 种（`level` / `bundle` /
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
@@ -130,11 +133,11 @@ pnpm build
 
 当前空间为 1200×640，地面高度 440；角色只向右自动行走，speed 单位为世界单位/秒。地面由水平区间组成，桥延伸时补足地面。渲染器可以完全替换。
 
-实体类型（预设）：机关族 switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、lift（lower/upper）；物品族 axe 与 hammer（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。
+实体类型（预设）：机关族 switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、lift（lower/upper）、guard（patrolling/stopped）、crusher（active/parked）；物品族 axe、hammer 与 key（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。新增类型只能注册到已有的三个内容工厂（`map` / `mechanism` / `item`）里，实现该工厂的类型接口。
 
 规则含 `on: { type: "click" | "enter", source: "entity-id" }`，可选 `if: [{entity, state}]`，和 `actions`。click 只接受开关或危险物；enter 只接受压力板。动作支持 `{type:"set",target,state}` 和 `{type:"after",ticks,actions}`。未知能力、非法引用、重复 ID 和错误状态会在加载前拒绝。
 
-每个 tick：推进时钟 → 到期动作按 due/order 执行 → 点击按记录顺序执行 → 角色前进 → 触发首次踩下的压力板 → 检查连续地面支撑、门和危险物 → 检查终点。规则按声明顺序执行，后续规则可以观察前面规则的状态变化。延迟相对动作实际执行的 tick 计算；after 不支持取消，同一目标的到期写入按上述顺序依次生效。条件在规则触发时检查，延迟动作不重新判断条件。
+每个 tick：推进时钟 → 到期动作按 due/order 执行 → 点击按记录顺序执行 → onMotion（巡逻等自走实体移动）→ 角色前进 → onContact（压力板等区域首次接触）→ onBlock（门、危险物、碾压）→ 检查终点与超时。规则按声明顺序执行，后续规则可以观察前面规则的状态变化。延迟相对动作实际执行的 tick 计算；after 不支持取消，同一目标的到期写入按上述顺序依次生效。条件在规则触发时检查，延迟动作不重新判断条件。
 
 输入只在 running 状态接收，并在下一个 tick 处理。暂停不处理输入；单步可从 ready/paused 执行一个 tick。每局上限 36,000 tick；暂停、切关、重置和倍速均不改变模拟规则。这里的确定性面向同一份关卡数据和兼容的 JS 运行时，不是跨版本物理引擎的承诺。
 

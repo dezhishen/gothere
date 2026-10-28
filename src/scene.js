@@ -158,6 +158,38 @@ export function createRenderer(canvas) {
     ctx.save();ctx.textAlign='center';ctx.fillStyle='#5f7050';ctx.font='11px "Microsoft YaHei", sans-serif';
     ctx.fillText(e.label??'',x+w/2,top-8);ctx.restore();
   }
+  // 巡逻守卫：会来回移动的机关，红点是它还在巡逻。
+  function guard(e) {
+    const x=e.x+e.width/2,y=440,active=e.state==='patrolling';
+    ellipse(x,y+2,18,4,0,'#849c6a22');
+    rect(x-14,y-16,28,14,5,'#a8b58e','#7c9365');
+    circle(x-8,y-2,4,'#8a9a78');circle(x+8,y-2,4,'#8a9a78');
+    rect(x-11,y-40,22,26,6,'#c8d2b4','#7f8f6a');
+    circle(x,y-30,6,'#fdf8e6');circle(x,y-30,3,active?'#b2574a':'#8a9a78');
+    line(x,y-40,x,y-48,'#8b9d78',2);circle(x,y-50,2.5,active?'#c2705f':'#9aa886');
+    ctx.save();ctx.textAlign='center';ctx.fillStyle='#5f7050';ctx.font='11px "Microsoft YaHei", sans-serif';
+    ctx.fillText(e.label??'',x,y-56);ctx.restore();
+  }
+  // 碎石机：来回碾压的障碍。
+  function crusher(e) {
+    const x=e.x+e.width/2,y=440,active=e.state==='active';
+    rect(e.x,y-40,e.width,40,4,'#9aa3ac','#6f7881');
+    for(let i=0;i<4;i+=1){const sx=e.x+6+i*((e.width-12)/3);line(sx,y-2,sx+4,y-14,'#6f7881',3);}
+    rect(e.x+4,y-52,e.width-8,12,3,active?'#c2705f':'#a8ae9a','#77808a');
+    ctx.save();ctx.textAlign='center';ctx.fillStyle='#5f7050';ctx.font='11px "Microsoft YaHei", sans-serif';
+    ctx.fillText(e.label??'',x,y-58);ctx.restore();
+  }
+  // 钥匙：可携带的小物件，开锁靠规则。
+  function key(e) {
+    const x=e.x+e.width/2,y=440,held=e.state==='held';
+    if(!held)ellipse(x,y+1,10,3,0,'#849c6a22');
+    ctx.save();ctx.translate(x,y-14);if(held)ctx.rotate(-.5);
+    circle(-6,0,5,null,'#c9a85f');
+    line(0,0,14,0,'#c9a85f',3);
+    line(11,0,11,6,'#c9a85f',3);
+    line(6,0,6,4,'#c9a85f',2);
+    ctx.restore();
+  }
   // 缺失渲染实现时的占位：画面降级，但校验与模拟不受影响。
   function placeholder(e) {
     rect(e.x,404,e.width,36,7,'#d9d3b7','#a3a97e');
@@ -225,7 +257,10 @@ export function createRenderer(canvas) {
         else if(e.kind==='plate')plate(e);
         else if(e.kind==='axe')axe(e);
         else if(e.kind==='hammer')hammer(e);
+        else if(e.kind==='key')key(e);
         else if(e.kind==='lift')lift(e);
+        else if(e.kind==='guard')guard(e);
+        else if(e.kind==='crusher')crusher(e);
         else placeholder(e);
         ctx.restore();
       }

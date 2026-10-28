@@ -61,6 +61,28 @@ export function createMechanismFactory() {
         // 楼层高度默认 440↔300，关卡可在实体上覆盖 capabilities.verticalRide。
         capabilities: { verticalRide: {} },
       },
+      guard: {
+        version: 1,
+        defaultWidth: 34,
+        iconOffset: 96,
+        states: [state('patrolling', '巡逻中'), state('stopped', '暂时停下')],
+        capabilities: {
+          // 顺序有意义：先动，再判接触伤害；点击只是给规则一个事件。
+          patrol: { minX: 300, maxX: 400, speed: 48, activeState: 'patrolling' },
+          damageOnContact: { state: 'patrolling', reason: 'hurt', message: '巡逻的守卫撞上了他。' },
+          clickable: {},
+        },
+      },
+      crusher: {
+        version: 1,
+        defaultWidth: 44,
+        iconOffset: 96,
+        states: [state('active', '来回碾压'), state('parked', '停在一侧')],
+        capabilities: {
+          patrol: { minX: 300, maxX: 400, speed: 36, activeState: 'active' },
+          blockPath: { state: 'active', reason: 'crusher', message: '碎石机来回碾压，过不去。' },
+        },
+      },
     },
   });
 }

@@ -11,10 +11,10 @@ import { validateDoc } from '../contract/validate.js';
 const clone = (value) => structuredClone(value);
 
 /**
- * 相位顺序即语义：接触（区域 / 拾取 / 伤害 / 乘梯）→ 阻挡 → 终点。
+ * 相位顺序即语义：实体移动 → 角色行走/支撑 → 接触（区域 / 拾取 / 伤害 / 乘梯）→ 阻挡 → 终点。
  * 新增相位必须改这张表，并补一条 golden 回放回归。
  */
-export const HOOK_PHASES = Object.freeze(['onContact', 'onBlock']);
+export const HOOK_PHASES = Object.freeze(['onMotion', 'onContact', 'onBlock']);
 
 const quantize = (value) => Math.round(value * 1e6) / 1e6;
 
@@ -172,7 +172,12 @@ export function createSimulation(input) {
     pending = [];
     if (state.status !== 'running') return;
 
-    // ③ 行走与脚底高度：整段都要有地面（两端 + 中点采样，避免窄缝被跳过）
+    // ③ 实体自己先动：巡逻、移动平台之类，交给 onMotion 相位。
+    const motionCtx = { state, world: model.world, tickRate: TICKS_PER_SECOND, emit, lose, trigger };
+    runPhase('onMotion', motionCtx);
+    if (state.status !== 'running') return;
+
+    // ④ 行走与脚底高度：整段都要有地面（两端 + 中点采样，避免窄缝被跳过）
     const from = state.actor.x;
     const to = Math.min(model.goal.x, quantize(from + model.actor.speed / TICKS_PER_SECOND));
     const attached = ridingGround();
@@ -191,17 +196,17 @@ export function createSimulation(input) {
     // 所有能力共用同一套「触及 / 同层」定义。
     const overlaps = (entity, margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
     const atFloor = (entity) => Math.abs(entity.y - state.actor.y) <= LIMITS.floorTolerance;
-    const ctx = { state, world: model.world, from, to, overlaps, atFloor, emit, lose, trigger };
+    const ctx = { state, world: model.world, from, to, overlaps, atFloor, tickRate: TICKS_PER_SECOND, emit, lose, trigger };
 
-    // ④ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害、乘梯
+    // ⑤ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害、乘梯
     runPhase('onContact', ctx);
     if (state.status !== 'running') return;
 
-    // ⑤ 阻挡类能力
+    // ⑥ 阻挡类能力
     runPhase('onBlock', ctx);
     if (state.status !== 'running') return;
 
-    // ⑥ 终点与超时
+    // ⑦ 终点与超时
     if (to >= model.goal.x && Math.abs(state.actor.y - model.goal.y) <= LIMITS.floorTolerance) {
       state.status = 'won';
       emit(MESSAGES.won, 'won');

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "id": "all-together",
+  "name": "全都来一遍",
+  "description": "一把斧头、一把钥匙、一个巡逻守卫、一道铁门、一座限时桥和一台货梯。手只有一双。",
+  "hint": "先点手里的斧头把它放到身后，才拿得起钥匙；进守卫范围前点一下守卫；过桥前点桥开关；站进货梯里再点电梯按钮。",
+  "world": { "width": 1200, "height": 640, "groundY": 440 },
+  "actor": { "x": 60, "speed": 64, "y": 440 },
+  "goal": { "x": 1160, "y": 440 },
+  "platforms": [
+    { "x": 0, "width": 700, "y": 440 },
+    { "x": 760, "width": 120, "y": 440 },
+    { "x": 950, "width": 90, "y": 300 },
+    { "x": 1120, "width": 80, "y": 440 }
+  ],
+  "stairs": [{ "x": 1040, "width": 80, "fromY": 300, "toY": 440 }],
+  "entities": [
+    { "id": "axe", "kind": "axe", "x": 150, "width": 34, "state": "idle", "label": "旧斧头", "capabilities": { "clickable": {} } },
+    { "id": "key", "kind": "key", "x": 300, "width": 20, "state": "idle", "label": "铜钥匙" },
+    { "id": "guard", "kind": "guard", "x": 380, "width": 34, "state": "patrolling", "label": "巡逻机关", "capabilities": { "patrol": { "minX": 380, "maxX": 470, "speed": 48, "activeState": "patrolling" } } },
+    { "id": "plate", "kind": "plate", "x": 540, "width": 50, "state": "idle", "label": "门前踏板" },
+    { "id": "gate", "kind": "gate", "x": 600, "width": 28, "state": "closed", "label": "铁门" },
+    { "id": "bridge-switch", "kind": "switch", "x": 690, "width": 28, "state": "off", "label": "桥开关" },
+    { "id": "bridge", "kind": "bridge", "x": 700, "width": 60, "state": "folded", "label": "限时桥" },
+    { "id": "lift-switch", "kind": "switch", "x": 860, "width": 28, "state": "off", "label": "电梯按钮" },
+    { "id": "lift", "kind": "lift", "x": 880, "width": 70, "state": "lower", "label": "货梯" }
+  ],
+  "rules": [
+    {
+      "id": "drop-axe",
+      "on": { "type": "click", "source": "axe" },
+      "if": [{ "entity": "axe", "state": "held" }],
+      "actions": [{ "type": "set", "target": "axe", "state": "idle" }]
+    },
+    {
+      "id": "stop-guard",
+      "on": { "type": "click", "source": "guard" },
+      "if": [{ "entity": "guard", "state": "patrolling" }],
+      "actions": [
+        { "type": "set", "target": "guard", "state": "stopped" },
+        { "type": "after", "ticks": 420, "actions": [{ "type": "set", "target": "guard", "state": "patrolling" }] }
+      ]
+    },
+    {
+      "id": "plate-opens-gate",
+      "on": { "type": "enter", "source": "plate" },
+      "if": [{ "entity": "key", "state": "held" }],
+      "actions": [{ "type": "set", "target": "gate", "state": "open" }]
+    },
+    {
+      "id": "extend-bridge",
+      "on": { "type": "click", "source": "bridge-switch" },
+      "if": [{ "entity": "bridge", "state": "folded" }],
+      "actions": [
+        { "type": "set", "target": "bridge-switch", "state": "on" },
+        { "type": "set", "target": "bridge", "state": "extended" },
+        {
+          "type": "after",
+          "ticks": 300,
+          "actions": [
+            { "type": "set", "target": "bridge", "state": "folded" },
+            { "type": "set", "target": "bridge-switch", "state": "off" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "call-lift",
+      "on": { "type": "click", "source": "lift-switch" },
+      "if": [{ "entity": "lift", "state": "lower" }],
+      "actions": [
+        { "type": "set", "target": "lift-switch", "state": "on" },
+        { "type": "set", "target": "lift", "state": "upper" }
+      ]
+    }
+  ]
+}

@@ -11,6 +11,12 @@ const solutions = [
   [{ tick: 181, source: 'lever' }, { tick: 501, source: 'fan' }],
   [{ tick: 250, source: 'axe' }, { tick: 520, source: 'hammer' }],
   [{ tick: 200, source: 'lever' }],
+  [
+    { tick: 150, source: 'axe' },
+    { tick: 200, source: 'guard' },
+    { tick: 520, source: 'bridge-switch' },
+    { tick: 800, source: 'lift-switch' },
+  ],
 ];
 for (const [index, level] of levels.entries()) {
   test(level.name + ': validates and cannot be won without intervention', () => {

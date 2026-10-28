@@ -18,8 +18,8 @@ test('the system has exactly three content factories: map / mechanism / item', (
   const factories = listFactories();
   assert.deepEqual(factories.map((factory) => factory.category), ['map', 'mechanism', 'item']);
   assert.deepEqual(getFactory('map').kinds, []);
-  assert.deepEqual(getFactory('mechanism').kinds, ['switch', 'bridge', 'gate', 'hazard', 'plate', 'lift']);
-  assert.deepEqual(getFactory('item').kinds, ['axe', 'hammer']);
+  assert.deepEqual(getFactory('mechanism').kinds, ['switch', 'bridge', 'gate', 'hazard', 'plate', 'lift', 'guard', 'crusher']);
+  assert.deepEqual(getFactory('item').kinds, ['axe', 'hammer', 'key']);
 });
 
 test('a type belongs to exactly one factory and the factory is its only owner', () => {

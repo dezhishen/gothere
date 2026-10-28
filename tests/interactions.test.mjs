@@ -78,6 +78,9 @@ test('physical interaction happens in shared phases, not inside a factory', () =
 test('the platform groups interpreters by data kind and types by content factory', () => {
   const platform = describePlatform();
   assert.deepEqual(platform.factories.map((factory) => factory.category), ['map', 'mechanism', 'item']);
-  assert.deepEqual(platform.factories.map((factory) => factory.kinds.length), [0, 6, 2]);
-  assert.deepEqual(platform.types.map((type) => type.category), ['mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'item', 'item']);
+  assert.deepEqual(platform.factories.map((factory) => factory.kinds.length), [0, 8, 3]);
+  assert.deepEqual(platform.types.map((type) => type.category), [
+    'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism', 'mechanism',
+    'item', 'item', 'item',
+  ]);
 });

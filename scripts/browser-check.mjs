@@ -38,7 +38,7 @@ try {
   check(!/梦游|梦醒|晚安/.test(await page.locator('body').innerText()), 'sleepwalking setting is removed');
   await page.screenshot({ path:artifact('desktop.png'),fullPage:true });
   check(await status(page) === '准备出发', 'initial scene is ready');
-  check(await page.locator('.level-tab').count() === 5, 'five levels available');
+  check(await page.locator('.level-tab').count() === 6, 'six levels available');
   await page.locator('#speed').click(); await page.locator('#speed').click();
   await page.getByRole('button',{name:'出发！',exact:true}).click();
   await page.getByRole('button',{name:'操作：木桥开关',exact:true}).click();
@@ -88,6 +88,21 @@ try {
   await settle(page, 14000);
   check(await status(page) === '终于到了', 'the lift and the stairs carry the traveller');
   console.log('PASS desktop: multi-floor map (stairs / lift)');
+
+  // 时间轴按 60 tick/秒换算：150 tick≈2500ms、200≈3333ms、520≈8667ms、800≈13333ms。
+  await page.getByRole('button',{name:'关卡 6：全都来一遍',exact:true}).click();
+  await page.locator('#play').click();
+  await settle(page, 2500);
+  await page.getByRole('button',{name:'操作：旧斧头',exact:true}).click();
+  await settle(page, 850);
+  await page.getByRole('button',{name:'操作：巡逻机关',exact:true}).click();
+  await settle(page, 5330);
+  await page.getByRole('button',{name:'操作：桥开关',exact:true}).click();
+  await settle(page, 4670);
+  await page.getByRole('button',{name:'操作：电梯按钮',exact:true}).click();
+  await settle(page, 4700);
+  check(await status(page) === '终于到了', 'every mechanic in one run');
+  console.log('PASS desktop: combined level (items + guard + bridge + lift + stairs)');
 
   await page.locator('#reset').click(); await page.locator('#play').click(); await settle(page, 250);
   await page.locator('#play').click();

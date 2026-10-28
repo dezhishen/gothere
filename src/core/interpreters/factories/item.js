@@ -33,6 +33,13 @@ export function createItemFactory() {
           clickable: {},
         },
       },
+      key: {
+        version: 1,
+        defaultWidth: 20,
+        iconOffset: 92,
+        states: [state('idle', '落在地上'), state('held', '握在手里')],
+        capabilities: { holdable: {} },
+      },
     },
   });
 }

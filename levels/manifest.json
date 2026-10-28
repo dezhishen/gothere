@@ -20,6 +20,10 @@
     {
       "id": "up-and-down",
       "file": "up-and-down.level.json"
+    },
+    {
+      "id": "all-together",
+      "file": "all-together.level.json"
     }
   ]
 }

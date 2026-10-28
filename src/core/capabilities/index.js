@@ -7,6 +7,7 @@ import { clickable } from './clickable.js';
 import { damageOnContact } from './damageOnContact.js';
 import { extendGround } from './extendGround.js';
 import { holdable } from './holdable.js';
+import { patrol } from './patrol.js';
 import { region } from './region.js';
 import { verticalRide } from './verticalRide.js';
 
@@ -41,7 +42,7 @@ export function listCapabilities() {
 /** 恢复默认注册表：平台编译进哪些能力实现，就由这份清单决定。 */
 export function resetCapabilities() {
   registry.clear();
-  for (const capability of [blockPath, clickable, damageOnContact, extendGround, holdable, region, verticalRide]) {
+  for (const capability of [blockPath, clickable, damageOnContact, extendGround, holdable, patrol, region, verticalRide]) {
     registerCapability(capability);
   }
 }
