@@ -1,6 +1,9 @@
 // 测试用的内容装载：走与 CLI 相同的文本源端口，读 levels/*.level.json 制品。
+// 关卡校验依赖类型（types/*.type.json），所以先装类型再读关卡。
 
 import { readFile } from 'node:fs/promises';
+
+import './types-fixture.mjs';
 
 import { createLevelService } from '../src/app/levelService.js';
 import { createTextSource } from '../src/app/levelSource.js';

@@ -117,12 +117,15 @@ export function eventsOfEntity(entity) {
   return [...names];
 }
 
-const STATE_LABELS = Object.freeze(Object.fromEntries(
-  listTypeDescriptors().flatMap((type) => type.states.map((item) => [item.id, item.label])),
-));
-
+/**
+ * 状态 id → 中文名。**现算**，不在模块加载时缓存：
+ * 类型是启动时注入的数据（types/*.type.json），缓存会在注入前就被冻成空表。
+ */
 export function stateLabel(value) {
-  return STATE_LABELS[value] ?? value;
+  for (const type of listTypeDescriptors()) {
+    for (const state of type.states) if (state.id === value) return state.label;
+  }
+  return value;
 }
 
 function slotSummary(type) {

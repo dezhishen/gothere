@@ -45,12 +45,17 @@ export function listTypeDescriptors() {
   return listFactories().flatMap((factory) => factory.list());
 }
 
-/** 恢复默认注册表：平台编译进哪些类别，就由这份清单决定。 */
-export function resetFactories() {
+/**
+ * 重建注册表。`types` 是纯数据（来自 types/<category>/<kind>.type.json）：
+ *   { mechanism: { switch: {...}, ... }, item: { axe: {...} } }
+ * 宿主（浏览器启动、CLI 外壳、测试）负责把 JSON 读进来；core 不碰文件系统。
+ */
+export function resetFactories(types = {}) {
   registry.clear();
   registerFactory(createMapFactory());
-  registerFactory(createMechanismFactory());
-  registerFactory(createItemFactory());
+  registerFactory(createMechanismFactory(types.mechanism ?? {}));
+  registerFactory(createItemFactory(types.item ?? {}));
+  return registry;
 }
 
 resetFactories();

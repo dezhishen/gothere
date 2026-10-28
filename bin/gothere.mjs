@@ -8,6 +8,20 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTextSource } from '../src/app/levelSource.js';
 import { runCli } from '../src/app/cli.js';
+import { CATEGORIES } from '../src/core/interpreters/factories/factory.js';
+import { parseTypes } from '../src/core/interpreters/factories/types.js';
+
+/** 类型是纯 JSON：types/<category>/<kind>.type.json，这里读出来交给产品逻辑。 */
+async function loadTypes() {
+  const manifest = JSON.parse(await readFile(resolve(ROOT, 'types/manifest.json'), 'utf8'));
+  const files = [];
+  for (const name of manifest.files) {
+    files.push({ name, data: JSON.parse(await readFile(resolve(ROOT, 'types', name), 'utf8')) });
+  }
+  const parsed = parseTypes(files);
+  if (!parsed.ok) throw new Error('类型数据有问题：' + parsed.errors.map((error) => error.path + '：' + error.message).join('；'));
+  return parsed.types;
+}
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PACKAGE = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8'));
@@ -16,6 +30,7 @@ const PACKAGE = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8')
 process.stdout.on('error', (error) => { if (error.code === 'EPIPE') process.exit(0); });
 
 process.exitCode = await runCli(process.argv.slice(2), {
+  types: await loadTypes(),
   loadDocs: () => createTextSource({ readText: (path) => readFile(resolve(ROOT, path), 'utf8') }).all(),
   readText: (path) => readFile(path, 'utf8'),
   resolvePath: (path) => resolve(process.cwd(), path),

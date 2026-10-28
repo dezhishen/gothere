@@ -6,7 +6,11 @@ import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises
 import { basename, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describePlatform } from '../src/core/interpreters/index.js';
+import { resetFactories } from '../src/core/interpreters/factories/index.js';
+import { readTypesContent } from './content.mjs';
 import { describe, listTypes } from '../src/core/contract/registry.js';
+// 类型是纯 JSON：生成 SKILL.md 前先把它们装上，否则 schema 表会是空的。
+resetFactories((await readTypesContent()).types);
 import { CODES } from '../src/app/errors.js';
 import { archiveFiles, archiveName } from './archive.mjs';
 import { nativeTarget, parseTarget, targetFromArgv } from './targets.mjs';

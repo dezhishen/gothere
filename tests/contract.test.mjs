@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import './types-fixture.mjs';
+
 import { compileModel } from '../src/core/contract/compile.js';
 import { diffDocs } from '../src/core/contract/diff.js';
 import { migrate } from '../src/core/contract/migrate.js';

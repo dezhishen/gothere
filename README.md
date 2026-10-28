@@ -210,14 +210,20 @@ cat > types/mechanism/trapdoor.type.json <<'JSON'
     "blocks": { "inState": "shut", "reason": "gate", "message": "翻板关着，过不去。" } } }
 JSON
 
-# 2. 生成数据模块（生成物入库，`pnpm check:types` 校验一致性）
-pnpm types
-# 3. 刷新 SKILL.md（同一份 schema 生成）
+# 2. 在 types/manifest.json 的 files 里登记一行（只决定顺序与加载清单）
+#    到这里就结束了——没有代码生成步骤，运行时直接读这些 JSON。
+# 3.（可选）刷新 SKILL.md 这份文档生成物
 pnpm skill
 ```
 
 不需要改工厂、校验器、内核、渲染、CLI 或测试：`art` 复用现成图元（不写就用占位图），
-状态与声明全部由数据决定。**新解释器**（新的一类，比如「地形」）才是加工厂文件的层级。
+状态与声明全部由数据决定。浏览器、CLI、单二进制都直接吃这份 JSON（构建时内联，
+开发时 HTTP 读）。**新解释器**（新的一类，比如「地形」）才是加工厂文件的层级。
+
+类型 JSON 的 schema 与校验函数（`parseTypes`）在
+`src/core/interpreters/factories/types.js`，它们是纯函数，外部地图编辑器可以直接复用：
+读同一批 `types/*.type.json`，用同一套规则校验，得到同样一份
+`{ mechanism: {...}, item: {...} }` 交给 `resetFactories`。
 
 ## 样式
 
@@ -263,7 +269,7 @@ pnpm skill
   门禁会拦住想在元素里写行为代码的改动。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
 - `types/<category>/<kind>.type.json`：机关/物品的**类型数据**（状态、声明槽、默认宽度、
-  画法名）；`pnpm types` 生成 `src/core/interpreters/factories/generated-types.js`。
+  画法名），纯 JSON；`types/manifest.json` 决定加载顺序，构建时内联进产物。
 - `src/core/interpreters/`：两层注册表。数据制品解释器固定 4 种（`level` / `bundle` /
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
   `item`），每类工厂按同一份接口产出自己的类型，注册只能落到已有类型上。

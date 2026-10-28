@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { bundleModules } from './bundle.mjs';
-import { readLevelsContent } from './content.mjs';
+import { readLevelsContent, readTypesContent } from './content.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
@@ -21,6 +21,8 @@ export async function buildCliSources() {
   const { chunks, modules, entry } = await bundleModules({ entry: resolve(ROOT, 'src/app/cli.js'), root: ROOT });
   const content = await readLevelsContent();
   const levelsJson = JSON.stringify(content.levels).replace(/</g, '\u003c');
+  // 类型也是数据：制品内联同一份 JSON，CLI 里不生成、不手写任何类型。
+  const typesJson = JSON.stringify((await readTypesContent()).types).replace(/</g, '\u003c');
   const version = JSON.parse(await readFile(resolve(ROOT, 'package.json'), 'utf8')).version;
 
   const common = [
@@ -28,6 +30,7 @@ export async function buildCliSources() {
     '',
     'const { runCli } = ' + entry + ';',
     'const LEVELS = ' + levelsJson + ';',
+    'const TYPES = ' + typesJson + ';',
     'const VERSION = ' + JSON.stringify(version) + ';',
     '',
     '// Agent 常把输出接给 head / jq：下游提前关闭管道不应让 CLI 崩掉。',
@@ -35,6 +38,7 @@ export async function buildCliSources() {
     '',
   ];
   const call = [
+    '  types: TYPES,',
     '  loadDocs: async () => structuredClone(LEVELS),',
     "  readText: (path) => readFile(path, 'utf8'),",
     '  resolvePath: (path) => resolve(process.cwd(), path),',

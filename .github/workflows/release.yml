@@ -56,10 +56,8 @@ jobs:
       - name: Layer gate
         run: node scripts/check-layers.mjs
 
-      - name: Type data and generated files are up to date
-        run: |
-          pnpm check:types
-          pnpm check:skill
+      - name: Generated SKILL.md is up to date
+        run: pnpm check:skill
 
       - name: Build single-file game and CLI
         run: pnpm build

@@ -13,8 +13,9 @@ import {
 import { fieldsOfCategory, listTypes, schemaOfCategory } from '../src/core/contract/registry.js';
 import { validateDoc } from '../src/core/contract/validate.js';
 import { levels } from './levels-fixture.mjs';
+import { installBuiltinTypes } from './types-fixture.mjs';
 
-test.beforeEach(() => resetFactories());
+test.beforeEach(async () => { await installBuiltinTypes(); });
 
 test('the system has exactly three content factories: map / mechanism / item', () => {
   assert.deepEqual([...CATEGORIES], ['map', 'mechanism', 'item']);

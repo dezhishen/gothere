@@ -26,7 +26,7 @@ export function makeServer({ portableOnly = false } = {}) {
         response.end(request.method === 'HEAD' ? undefined : html);
         return;
       }
-      const allowed = pathname === '/' || pathname === '/index.html' || pathname === '/favicon.svg' || pathname === '/project.md' || pathname.startsWith('/src/') || pathname.startsWith('/levels/');
+      const allowed = pathname === '/' || pathname === '/index.html' || pathname === '/favicon.svg' || pathname === '/project.md' || pathname.startsWith('/src/') || pathname.startsWith('/levels/') || pathname.startsWith('/types/');
       if (!allowed || pathname.includes('\\') || pathname.includes('\0')) { send(404, 'Not found'); return; }
       const file = await realpath(resolve(ROOT, '.' + (pathname === '/' ? '/index.html' : pathname)));
       const rel = relative(ROOT, file);

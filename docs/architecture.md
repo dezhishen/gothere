@@ -127,16 +127,18 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 
 | 想加的东西 | 要改的文件 | 不用改 |
 |---|---|---|
-| 一种新机关/物品 | `types/<category>/<kind>.type.json`（数据文件，不需要改 manifest）；`pnpm types` 重新生成 `generated-types.js`，`pnpm skill` 刷新 SKILL.md | 工厂、校验、内核、渲染（`art` 复用时）、CLI、测试——**一行代码都不用改** |
+| 一种新机关/物品 | 一个 `types/<category>/<kind>.type.json` + 在 `types/manifest.json` 的 `files` 里登记一行 | 工厂、校验、内核、渲染（`art` 复用时）、CLI、测试——**一行代码都不用改**，也没有中间生成物 |
 | 一种新机关/物品（运行时注册） | 一个 `createFactory({...})` 文件 + `registerFactory()` | 其它一切 |
 | 一个新类别工厂 | 新工厂文件 + `factories/index.js` 的 `resetFactories()` 一行 | 校验、内核、渲染、CLI、SKILL 模板 |
 | 一张新关卡 | `levels/<id>.level.json`；跑 `pnpm skill` 刷新生成物 | 代码与测试（数量断言已改成跟随内容清单） |
 | 一种新声明槽（如 `heals`） | 能力文件 + `capabilities/index.js` 注册 + 工厂 `schema.slots` + 该槽在内核的**阶段实现** | 校验器、CLI、SKILL 模板、渲染 |
 | 一种新数据制品（`level`/`bundle` 之外的 kind） | `interpreters/index.js` 的 `KINDS` 与 `REQUIRED` + 版本矩阵 | 内容工厂与内核 |
 
-类型的数据流：`types/**/*.type.json` →（`scripts/build-types.mjs`）→
-`src/core/interpreters/factories/generated-types.js` → 工厂 `createFactory({ types })`
-→ 契约与内核。生成物入库，`pnpm check:types` 在 CI 里校验它与数据一致。
+类型的数据流：`types/<category>/<kind>.type.json`（纯 JSON）→ 宿主读入
+（构建期内联 / 开发期 HTTP / CLI 读盘）→ `parseTypes()` 校验并分组 →
+`resetFactories({ mechanism, item })` → 工厂 `createFactory({ types })` → 契约与内核。
+**没有生成物、没有中间代码**：JSON 就是唯一权威来源，`parseTypes` 是纯函数，外部
+地图编辑器可以直接复用同一份 schema 与校验。
 
 守卫测试：`tests/types.test.mjs`（数据 ⇔ 生成物 ⇔ 平台类型表，含坏数据拒绝）、
 `tests/extension.test.mjs`（新增类型/工厂后仍需改别处时会失败）。两者都只断言关系，

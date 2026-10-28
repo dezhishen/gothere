@@ -5,6 +5,7 @@
 // 退出码：0 成功 / 2 用法或找不到 / 3 校验失败 / 4 模拟失败 / 5 内部错误。
 
 import { stateLabel } from '../core/contract/registry.js';
+import { resetFactories } from '../core/interpreters/factories/index.js';
 import { CODES, domainError, exitCode } from './errors.js';
 import { createLevelService } from './levelService.js';
 import { invoke } from './skills.js';
@@ -14,13 +15,17 @@ import { invoke } from './skills.js';
  * - loadDocs(): → 关卡文档数组（内置关卡由 shell 决定从磁盘读还是内联读）
  * - readText(path): 读一个绝对路径（用户传入的 JSON 文件）
  * - resolvePath(path): 把相对路径按当前工作目录解析成绝对路径
+ * - types: 类型数据（纯 JSON 解析后的 { category: { kind: {...} } }）——内容不是代码，
+ *   由 shell 决定从磁盘读还是从制品内联块读。
  * 全部是端口：产品逻辑里不出现 process / 文件系统 / 路径拼接，制品才能单文件自洽。
  */
 export async function runCli(argvIn, options = {}) {
-  const { loadDocs, readText, resolvePath = (path) => path, stdout, stderr, version = 'unknown' } = options;
+  const { loadDocs, readText, resolvePath = (path) => path, stdout, stderr, version = 'unknown', types } = options;
   if (typeof loadDocs !== 'function') throw new Error('runCli 需要 loadDocs 端口。');
   if (typeof readText !== 'function') throw new Error('runCli 需要 readText 端口。');
   if (typeof stdout !== 'function' || typeof stderr !== 'function') throw new Error('runCli 需要 stdout / stderr 端口。');
+  // 类型是数据：装上之后，后面所有 describe / validate / simulate 都认识它们。
+  if (types) resetFactories(types);
   const out = (text) => stdout(text);
   const err = (text) => stderr(text);
 

@@ -2,6 +2,8 @@ import { acceptsInput, stateLabel, typeDescriptor } from './core/contract/regist
 import { validateLevel } from './core/contract/validate.js';
 import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.js';
 import { createDocSource, createTextSource } from './app/levelSource.js';
+import { resetFactories } from './core/interpreters/factories/index.js';
+import { parseTypes } from './core/interpreters/factories/types.js';
 import { createRenderer } from './scene.js';
 
 const $ = (id) => document.getElementById(id);
@@ -247,6 +249,28 @@ window.gothere = Object.freeze({
   validate: (doc) => validateLevel(doc),
 });
 
+// 类型源：与关卡一样，单文件产物读内联 JSON 块，开发态走 HTTP 读 types/*.type.json。
+// 类型是纯数据，所以这里只是“读 JSON + 装上”，没有任何生成物或代码分支。
+async function loadTypes() {
+  const embedded = $('types-data');
+  const files = [];
+  if (embedded) {
+    for (const file of JSON.parse(embedded.textContent).files) files.push(file);
+  } else {
+    const manifestResponse = await fetch('/types/manifest.json', { cache: 'no-store' });
+    if (!manifestResponse.ok) throw new Error('HTTP ' + manifestResponse.status + ' /types/manifest.json');
+    const manifest = await manifestResponse.json();
+    for (const name of manifest.files) {
+      const response = await fetch('/types/' + name, { cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status + ' /types/' + name);
+      files.push({ name, data: await response.json() });
+    }
+  }
+  const parsed = parseTypes(files);
+  if (!parsed.ok) throw new Error('类型数据校验失败：' + parsed.errors.map((error) => error.path + '：' + error.message).join('；'));
+  return parsed.types;
+}
+
 // 内容源：单文件产物读内联 JSON 块（零外部请求），开发态走 HTTP 读 levels/*.level.json。
 async function loadContent() {
   const embedded = $('levels-data');
@@ -266,6 +290,8 @@ async function loadContent() {
 }
 
 async function boot() {
+  // 关卡校验与模拟都依赖类型，所以必须先装类型。
+  resetFactories(await loadTypes());
   levels = await loadContent();
   loadLevel(levels[0], 0);
   requestAnimationFrame(frame);

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import './types-fixture.mjs';
+
 import { createSimulation } from '../src/core/kernel/engine.js';
 import { replayRecording } from '../src/core/kernel/replay.js';
 import { validateLevel } from '../src/core/contract/validate.js';
