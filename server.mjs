@@ -31,6 +31,19 @@ export function makeServer({ portableOnly = false } = {}) {
       const file = await realpath(resolve(ROOT, '.' + (pathname === '/' ? '/index.html' : pathname)));
       const rel = relative(ROOT, file);
       if (rel.startsWith('..' + sep) || rel === '..' || resolve(ROOT, rel) !== file || !(await stat(file)).isFile()) { send(404, 'Not found'); return; }
+      // 源码是 TypeScript：浏览器只认 JS，开发服务器按需擦除类型（生产产物不走这里）。
+      if (file.endsWith('.ts')) {
+        const { default: ts } = await import('typescript');
+        const { outputText } = ts.transpileModule(await readFile(file, 'utf8'), {
+          fileName: file,
+          compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext, isolatedModules: true },
+        });
+        response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff',
+          'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'" });
+        response.end(request.method === 'HEAD' ? undefined : outputText);
+        return;
+      }
       response.writeHead(200, { 'Content-Type':MIME[extname(file)] ?? 'application/octet-stream',
         'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff',
         'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'" });

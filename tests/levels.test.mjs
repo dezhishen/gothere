@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { levels } from './levels-fixture.mjs';
-import { createSimulation } from '../src/core/kernel/engine.js';
-import { replayRecording } from '../src/core/kernel/replay.js';
-import { validateLevel } from '../src/core/contract/validate.js';
+import { createSimulation } from '../src/core/kernel/engine.ts';
+import { replayRecording } from '../src/core/kernel/replay.ts';
+import { validateLevel } from '../src/core/contract/validate.ts';
 
 const solutions = [
   [{ tick: 1, source: 'lever' }],

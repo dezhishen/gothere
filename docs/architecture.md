@@ -144,6 +144,21 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 `tests/extension.test.mjs`（新增类型/工厂后仍需改别处时会失败）。两者都只断言关系，
 不写死数量与清单。
 
+### 2.7 类型（TypeScript）
+
+源码是 `.ts`，但**运行时不编译**：Node 26 原生擦除类型、打包器用 `ts.transpileModule`
+剥离、dev 服务器即时转译。类型词汇只在一处定义：
+
+| 文件 | 定义什么 |
+|---|---|
+| `src/core/contract/types.ts` | 类别、动作与连线、声明槽（`ReactsSlot` …）、类型数据、关卡文档、编译模型、快照、`ValidationResult`、`Factory` / `Interpreter` / `Game` 接口 |
+| `src/core/contract/versions.ts` | `Requirements` / `Supports` / `VersionGap` |
+| `src/core/interpreters/factories/factory.ts` | 工厂实现与产品校验 |
+| `src/core/interpreters/factories/types.ts` | `parseTypes()`：类型 JSON 的 schema 与聚合 |
+
+`pnpm typecheck` 目前覆盖 contract / capabilities / factories；其余文件已迁到 `.ts`，
+注解补齐后往 `tsconfig.json` 的 `include` 里加路径即可（白名单式推进，CI 不悬红）。
+
 ## 3. 数据流
 
 <a id="flows"></a>

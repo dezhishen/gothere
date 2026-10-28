@@ -56,6 +56,9 @@ jobs:
       - name: Layer gate
         run: node scripts/check-layers.mjs
 
+      - name: Typecheck (contract / capabilities / factories)
+        run: pnpm typecheck
+
       - name: Generated SKILL.md is up to date
         run: pnpm check:skill
 

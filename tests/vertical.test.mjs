@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compileModel } from '../src/core/contract/compile.js';
-import { validateDoc } from '../src/core/contract/validate.js';
-import { createGame } from '../src/core/interpreters/index.js';
+import { compileModel } from '../src/core/contract/compile.ts';
+import { validateDoc } from '../src/core/contract/validate.ts';
+import { createGame } from '../src/core/interpreters/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const level5 = () => structuredClone(levels.find((level) => level.id === 'up-and-down'));

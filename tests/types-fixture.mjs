@@ -4,9 +4,9 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-import { CATEGORIES } from '../src/core/interpreters/factories/factory.js';
-import { resetFactories } from '../src/core/interpreters/factories/index.js';
-import { parseTypes } from '../src/core/interpreters/factories/types.js';
+import { CATEGORIES } from '../src/core/interpreters/factories/factory.ts';
+import { resetFactories } from '../src/core/interpreters/factories/index.ts';
+import { parseTypes } from '../src/core/interpreters/factories/types.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 

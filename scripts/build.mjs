@@ -11,7 +11,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 export async function buildPortable() {
   await buildCss({ quiet: true });
-  const { chunks, modules } = await bundleModules({ entry: resolve(ROOT, 'src/main.js'), root: ROOT });
+  const { chunks, modules } = await bundleModules({ entry: resolve(ROOT, 'src/main.ts'), root: ROOT });
   const [template, css, icon, levelData, typeData] = await Promise.all([
     readFile(resolve(ROOT,'index.html'),'utf8'), readFile(resolve(ROOT,'src/style.css'),'utf8'),
     readFile(resolve(ROOT,'favicon.svg'),'utf8'), readLevelsContent(), readTypesContent(),
@@ -28,7 +28,7 @@ export async function buildPortable() {
     .replace('href="/favicon.svg"', () => 'href="data:image/svg+xml,' + encodeURIComponent(icon) + '"')
     .replace('id="open-project">项目路线', () => 'id="open-project">试玩说明')
     .replace('id="project-title">项目路线', () => 'id="project-title">试玩说明')
-    .replace('<script type="module" src="/src/main.js"></script>', () =>
+    .replace('<script type="module" src="/src/main.ts"></script>', () =>
       '<script id="portable-data" type="application/json">' + safeData + '</script>\n' +
       '<script id="types-data" type="application/json">' + typesData + '</script>\n' +
       '<script id="levels-data" type="application/json">' + levelsData + '</script>\n' +

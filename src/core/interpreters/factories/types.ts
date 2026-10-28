@@ -3,33 +3,39 @@
 // 宿主（浏览器 / CLI / 编辑器）把它读进来，交给 parseTypes 校验并分组。
 // 外部地图编辑器拿到的也是同一份 JSON 与同一个校验函数。
 
-import { CATEGORIES } from './factory.js';
+import { CATEGORIES } from './factory.ts';
+
+import type { Category, ParseTypesResult, TypeDefinition, TypeSourceFile, TypesByCategory, ValidationIssue } from '../../contract/types.ts';
 
 export const TYPES_SCHEMA = 'types@1';
 export const KIND_PATTERN = /^[a-z][a-z0-9-]*$/;
 
-const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const isString = (value) => typeof value === 'string' && value.length > 0;
+const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 
 /**
  * 校验一组类型文件并分组。
  * input：`[{ name: 'mechanism/switch.type.json', data: {...} }, ...]`
- * 返回：`{ ok, errors, types: { mechanism: { switch: {...} }, item: {} }, files: [...] }`
+ * 返回：`{ ok, errors, types: { mechanism: { switch: {...} }, item: {} }, files }`
  */
-export function parseTypes(input) {
-  const errors = [];
-  const fail = (name, message) => errors.push({ code: 'SCHEMA_INVALID', path: name, message });
-  const types = Object.fromEntries(CATEGORIES.map((category) => [category, {}]));
-  const files = [];
+export function parseTypes(input: unknown): ParseTypesResult {
+  const errors: ValidationIssue[] = [];
+  const fail = (name: string, message: string): void => { errors.push({ code: 'SCHEMA_INVALID', path: name, message }); };
+  const types = Object.fromEntries(CATEGORIES.map((category) => [category, {}])) as TypesByCategory;
+  const files: string[] = [];
   if (!Array.isArray(input)) {
-    return { ok: false, types, files, errors: [{ code: 'SCHEMA_INVALID', path: 'types', message: '类型数据必须是数组。' }] };
+    return {
+      ok: false, types, files,
+      errors: [{ code: 'SCHEMA_INVALID', path: 'types', message: '类型数据必须是数组。' }],
+    };
   }
-  for (const entry of input) {
+  for (const entry of input as unknown[]) {
     if (!isObject(entry) || !isString(entry.name) || !isObject(entry.data)) {
       fail('types', '每一项必须是 { name, data }。');
       continue;
     }
-    const { name, data } = entry;
+    const name = entry.name;
+    const data = entry.data as unknown as TypeDefinition & Record<string, unknown>;
     const before = errors.length;
     const { category, kind, version, defaultWidth, iconOffset, states, slots } = data;
     if (!CATEGORIES.includes(category)) fail(name, 'category 必须是 ' + CATEGORIES.join(' / ') + '，收到 ' + String(category) + '。');
@@ -42,7 +48,7 @@ export function parseTypes(input) {
     if (!Number.isFinite(defaultWidth) || defaultWidth <= 0) fail(name, 'defaultWidth 必须是正数。');
     if (!Number.isFinite(iconOffset) || iconOffset < 0) fail(name, 'iconOffset 必须是非负数。');
     if (data.art !== undefined && !isString(data.art)) fail(name, 'art 必须是画法名（字符串）。');
-    const stateIds = new Set();
+    const stateIds = new Set<string>();
     if (!Array.isArray(states) || states.length === 0) {
       fail(name, 'states 至少要有一个状态。');
     } else {
@@ -71,12 +77,15 @@ export function parseTypes(input) {
       fail(name, 'consumedState 必须是已声明状态的 id。');
     }
     if (errors.length > before) continue;
-    if (types[category][kind]) {
+    const bucket = types[category] as Record<string, TypeDefinition>;
+    if (bucket[kind]) {
       fail(name, '类型 ' + kind + ' 重复定义。');
       continue;
     }
-    types[category][kind] = data;
+    bucket[kind] = data as TypeDefinition;
     files.push(name);
   }
   return { ok: errors.length === 0, errors, types, files };
 }
+
+export type { TypeSourceFile, Category };

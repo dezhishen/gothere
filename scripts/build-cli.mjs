@@ -1,4 +1,4 @@
-// CLI 独立制品：把 src/app/cli.js 与它依赖的全部模块、以及内置关卡，
+// CLI 独立制品：把 src/app/cli.ts 与它依赖的全部模块、以及内置关卡，
 // 打进**一个**文件 dist/gothere-cli.mjs。
 // 制品只依赖 node 内置模块，可以单独复制走、直接 `node gothere-cli.mjs` 或当 bin 用。
 
@@ -18,7 +18,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
  *   而且没有顶层 await，所以外壳把 await 收进一个 async IIFE。
  */
 export async function buildCliSources() {
-  const { chunks, modules, entry } = await bundleModules({ entry: resolve(ROOT, 'src/app/cli.js'), root: ROOT });
+  const { chunks, modules, entry } = await bundleModules({ entry: resolve(ROOT, 'src/app/cli.ts'), root: ROOT });
   const content = await readLevelsContent();
   const levelsJson = JSON.stringify(content.levels).replace(/</g, '\u003c');
   // 类型也是数据：制品内联同一份 JSON，CLI 里不生成、不手写任何类型。

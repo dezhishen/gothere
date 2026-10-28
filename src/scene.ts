@@ -1,4 +1,4 @@
-import { typeDescriptor } from './core/contract/registry.js';
+import { typeDescriptor } from './core/contract/registry.ts';
 
 const C = { ink:'#405c43', grass:'#9bac7b', land:'#a6b48b', dark:'#667f59', cream:'#faf4da', wood:'#b9a077', rust:'#b9846e' };
 const noise = (i) => { const value = Math.sin(i * 127.1 + 311.7) * 43758.5453; return value - Math.floor(value); };

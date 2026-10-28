@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { PLATFORM } from '../src/core/contract/versions.js';
-import { invoke, listSkills } from '../src/app/skills.js';
+import { PLATFORM } from '../src/core/contract/versions.ts';
+import { invoke, listSkills } from '../src/app/skills.ts';
 import { levels, service } from './levels-fixture.mjs';
 
 const call = (id, input = {}) => invoke(id, input, { service });

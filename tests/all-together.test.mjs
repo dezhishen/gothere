@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createGame } from '../src/core/interpreters/index.js';
+import { createGame } from '../src/core/interpreters/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const demo = () => structuredClone(levels.find((level) => level.id === 'all-together'));

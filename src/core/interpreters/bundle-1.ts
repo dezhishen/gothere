@@ -1,6 +1,8 @@
 // 解释器：单文件产物里内联的关卡包 bundle@1。
 // 处理的是「一个自包含的关卡集合」这一类数据：schema 与 levels 都是内联 JSON，不发起请求。
 
+import type { ValidationIssue } from '../contract/types.ts';
+
 export const BUNDLE_SCHEMA = 'levels@1';
 export const BUNDLE_VERSION = 1;
 
@@ -15,7 +17,7 @@ export function parseBundle(payload) {
     try {
       bundle = JSON.parse(payload);
     } catch (error) {
-      return fail('SCHEMA_INVALID', '', '内联关卡包不是合法 JSON：' + error.message + '。');
+      return fail('SCHEMA_INVALID', '', '内联关卡包不是合法 JSON：' + (error as Error).message + '。');
     }
   }
   if (!isObject(bundle)) return fail('SCHEMA_INVALID', '', '内联关卡包必须是一个 JSON 对象。');
@@ -26,7 +28,7 @@ export function parseBundle(payload) {
   if (!Array.isArray(bundle.levels) || bundle.levels.length === 0 || bundle.levels.length > MAX_LEVELS) {
     return fail('SCHEMA_INVALID', 'levels', 'levels 必须是 1～' + MAX_LEVELS + ' 项的数组。');
   }
-  const errors = [];
+  const errors: ValidationIssue[] = [];
   const seen = new Set();
   bundle.levels.forEach((level, index) => {
     const path = 'levels[' + index + ']';

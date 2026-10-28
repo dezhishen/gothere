@@ -17,7 +17,7 @@ export function parseManifestText(text) {
   try {
     manifest = JSON.parse(text);
   } catch (error) {
-    return fail('SCHEMA_INVALID', '', '内容清单不是合法 JSON：' + error.message + '。');
+    return fail('SCHEMA_INVALID', '', '内容清单不是合法 JSON：' + (error as Error).message + '。');
   }
   if (!isObject(manifest)) return fail('SCHEMA_INVALID', '', '内容清单必须是一个 JSON 对象。');
   if (manifest.schema !== MANIFEST_SCHEMA) {

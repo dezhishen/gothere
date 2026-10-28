@@ -2,7 +2,7 @@
 // 会不会伤人。它不知道任何机关的存在——「谁需要这把钥匙」由机关声明、由角色视图回答。
 // 具体有哪些物品是数据：types/item/<kind>.type.json（由宿主读入后传进来）。
 
-import { createFactory } from './factory.js';
+import { createFactory } from './factory.ts';
 
 export function createItemFactory(types = {}) {
   return createFactory({

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { eventsOfEntity, listTypes, typeDescriptor } from '../src/core/contract/registry.js';
-import { validateDoc } from '../src/core/contract/validate.js';
-import { describePlatform, createGame } from '../src/core/interpreters/index.js';
-import { factoryFor } from '../src/core/interpreters/factories/index.js';
+import { eventsOfEntity, listTypes, typeDescriptor } from '../src/core/contract/registry.ts';
+import { validateDoc } from '../src/core/contract/validate.ts';
+import { describePlatform, createGame } from '../src/core/interpreters/index.ts';
+import { factoryFor } from '../src/core/interpreters/factories/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const axeLevel = () => structuredClone(levels.find((level) => level.id === 'the-axe'));

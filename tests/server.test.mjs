@@ -6,7 +6,7 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base = 'http://127.0.0.1:' + server.address().port;
 test.after(()=>new Promise(resolve=>server.close(resolve)));
 test('serves the actual app, modules, project document and correct MIME types', async () => {
-  for(const [path,mime] of [['/','text/html'],['/src/main.js','text/javascript'],['/src/style.css','text/css'],['/favicon.svg','image/svg+xml'],['/project.md','text/plain'],['/levels/manifest.json','application/json'],['/levels/first-bridge.level.json','application/json']]) {
+  for(const [path,mime] of [['/','text/html'],['/src/main.ts','text/javascript'],['/src/style.css','text/css'],['/favicon.svg','image/svg+xml'],['/project.md','text/plain'],['/levels/manifest.json','application/json'],['/levels/first-bridge.level.json','application/json']]) {
     const response=await fetch(base+path);
     assert.equal(response.status,200);assert.ok(response.headers.get('content-type').startsWith(mime));
     assert.ok((await response.text()).length>50);

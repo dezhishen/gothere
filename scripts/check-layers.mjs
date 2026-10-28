@@ -5,7 +5,7 @@
 //   L1 interp  → L1 kernel / L0
 //   L1 kernel  → L0
 //   L0         → 无
-// 同时禁止 core 里出现 node:* 与 DOM 全局。
+// 源码是 TypeScript；这里只看运行时依赖方向（type-only import 也算边）。
 
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, relative, resolve, sep } from 'node:path';
@@ -14,7 +14,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SRC = resolve(ROOT, 'src');
 
-const IMPORT_LINE = /^import\s+[^\n]*?['"]([^'"]+)['"];?\s*$/gm;
+// 只统计**运行时**依赖：`import type ...` 与 `import { type X }` 会被 TypeScript 擦掉，
+// 不构成运行时的边，因此不参与分层判定（类型词汇表可以被任意层引用）。
+const IMPORT_LINE = /^import\s+(?!type\s)[^\n]*?['"]([^'"]+)['"];?\s*$/gm;
 
 const ALLOWED = Object.freeze({
   L0: [],
@@ -35,14 +37,14 @@ export function layerOf(relativePath) {
   if (path.startsWith('core/kernel/')) return 'L1-kernel';
   if (path.startsWith('core/interpreters/')) return 'L1-interpreter';
   if (path.startsWith('app/')) return 'L1-app';
-  if (path === 'main.js') return 'L3-shell';
+  if (path === 'main.ts') return 'L3-shell';
   return 'feature';
 }
 
 async function sourceFiles() {
   const entries = await readdir(SRC, { recursive: true, withFileTypes: true });
   return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.js'))
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
     .map((entry) => resolve(entry.parentPath ?? entry.path, entry.name));
 }
 
@@ -58,13 +60,13 @@ export async function checkLayers() {
     for (const match of source.matchAll(IMPORT_LINE)) {
       const specifier = match[1];
       const leaf = from.split(sep).join('/');
-      if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.js') {
+      if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.ts') {
         violations.push({ file: from, target: specifier, reason: '声明槽必须是叶子模块，不能 import 任何东西。' });
         continue;
       }
       if (leaf.startsWith('core/interpreters/factories/')) {
         const target = relative(SRC, resolve(dirname(file), specifier)).split(sep).join('/');
-        const allowed = target.startsWith('core/interpreters/factories/') || target === 'core/contract/constants.js';
+        const allowed = target.startsWith('core/interpreters/factories/') || target === 'core/contract/constants.ts';
         if (!allowed) {
           violations.push({ file: from, target, reason: '内容工厂只能依赖 constants 与同目录，否则契约 ↔ 工厂会成环。' });
         }
@@ -73,7 +75,7 @@ export async function checkLayers() {
       record(from, layer, isCore, specifier, violations, file);
     }
     const leaf = from.split(sep).join('/');
-    if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.js' && /(\bfunction\b|=>)/.test(source)) {
+    if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.ts' && /(\bfunction\b|=>)/.test(source)) {
       violations.push({ file: from, target: '行为代码', reason: '元素只能声明自己：声明槽里不允许出现函数。' });
     }
     if (isCore && /\b(document|window)\s*\./.test(source)) {

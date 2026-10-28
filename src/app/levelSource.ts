@@ -2,8 +2,8 @@
 // dev 走 HTTP、CLI 走文件、单文件产物走内联 JSON 块——用例层不认识任何一种。
 // 清单与关卡的「怎么算合法」属于解释器（core/interpreters），这里只管把字节读进来。
 
-import { CODES, domainError } from './errors.js';
-import { parseManifest } from '../core/interpreters/index.js';
+import { CODES, domainError } from './errors.ts';
+import { parseManifest } from '../core/interpreters/index.ts';
 
 export const MANIFEST_PATH = 'levels/manifest.json';
 

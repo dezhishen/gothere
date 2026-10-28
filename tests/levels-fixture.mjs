@@ -5,8 +5,8 @@ import { readFile } from 'node:fs/promises';
 
 import './types-fixture.mjs';
 
-import { createLevelService } from '../src/app/levelService.js';
-import { createTextSource } from '../src/app/levelSource.js';
+import { createLevelService } from '../src/app/levelService.ts';
+import { createTextSource } from '../src/app/levelSource.ts';
 
 const root = new URL('../', import.meta.url);
 

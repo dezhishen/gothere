@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CATEGORIES, FACTORY_METHODS, createFactory } from '../src/core/interpreters/factories/factory.js';
+import { CATEGORIES, FACTORY_METHODS, createFactory } from '../src/core/interpreters/factories/factory.ts';
 import {
   createType,
   factoryFor,
@@ -9,9 +9,9 @@ import {
   listFactories,
   registerFactory,
   resetFactories,
-} from '../src/core/interpreters/factories/index.js';
-import { fieldsOfCategory, listTypes, schemaOfCategory } from '../src/core/contract/registry.js';
-import { validateDoc } from '../src/core/contract/validate.js';
+} from '../src/core/interpreters/factories/index.ts';
+import { fieldsOfCategory, listTypes, schemaOfCategory } from '../src/core/contract/registry.ts';
+import { validateDoc } from '../src/core/contract/validate.ts';
 import { levels } from './levels-fixture.mjs';
 import { installBuiltinTypes } from './types-fixture.mjs';
 
@@ -112,7 +112,8 @@ test('createFactory validates the products it produces', () => {
   assert.equal(factory.create('rock').category, 'item');
   assert.deepEqual(factory.create('rock').slots, {});
   assert.equal(factory.create('missing'), null);
-  assert.deepEqual(factory.parseSection({}), { ok: true, code: 'OK', errors: [] });
+  // 没写 parseSection 的工厂：默认放行，且形状符合 ValidationResult（含 messages）。
+  assert.deepEqual(factory.parseSection({}), { ok: true, code: 'OK', errors: [], messages: [] });
 });
 
 test('the map factory owns the world section and the terrain query', () => {

@@ -1,0 +1,29 @@
+{
+  // TypeScript 迁移是**分阶段**的：先把「类型词汇表 + 契约层 + 内容工厂」纳入严格检查，
+  // 其余文件已经是 .ts（运行时由 Node 原生擦除类型 / 打包器剥离），
+  // 补完注解后把路径逐个加进 include 即可，不需要改其它配置。
+  // 待补（按依赖顺序）：src/core/interpreters/index|level-1|bundle-1|manifest-1|recording-1、
+  // src/core/kernel/**、src/app/**、src/scene.ts、src/main.ts
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "src/core/contract/**/*.ts",
+    "src/core/capabilities/**/*.ts",
+    "src/core/interpreters/factories/**/*.ts"
+  ]
+}

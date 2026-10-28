@@ -3,7 +3,7 @@
 //   types/mechanism/<kind>.type.json（纯 JSON，由宿主读入后传进来）
 // 新增一种机关不需要改这个文件。
 
-import { createFactory } from './factory.js';
+import { createFactory } from './factory.ts';
 
 export function createMechanismFactory(types = {}) {
   return createFactory({

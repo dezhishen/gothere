@@ -6,14 +6,16 @@
 // 每条声明的 supports 是它覆盖的版本；没有覆盖就明确失败，绝不「尽力解释」。
 // 新增一种数据类型 = 加一份文件 + 在 resetInterpreters 里登记一行。
 
-import { COMMON_FIELDS, listTypes } from '../contract/registry.js';
-import { validateDoc } from '../contract/validate.js';
-import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
-import { listFactories } from './factories/index.js';
-import { createBundleInterpreter } from './bundle-1.js';
-import { createLevelInterpreter } from './level-1.js';
-import { createManifestInterpreter } from './manifest-1.js';
-import { createRecordingInterpreter } from './recording-1.js';
+import { COMMON_FIELDS, listTypes } from '../contract/registry.ts';
+
+import type { ValidationIssue, ValidationMode } from '../contract/types.ts';
+import { validateDoc } from '../contract/validate.ts';
+import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.ts';
+import { listFactories } from './factories/index.ts';
+import { createBundleInterpreter } from './bundle-1.ts';
+import { createLevelInterpreter } from './level-1.ts';
+import { createManifestInterpreter } from './manifest-1.ts';
+import { createRecordingInterpreter } from './recording-1.ts';
 
 export const KINDS = Object.freeze(['level', 'bundle', 'manifest', 'recording']);
 
@@ -150,7 +152,7 @@ function diagnose(input, mode, resolution) {
 }
 
 /** 解析 = 选解释器 + 四层校验 + 编译成模型；不运行。 */
-export function parseLevel(input, options = {}) {
+export function parseLevel(input: unknown, options: { mode?: ValidationMode } = {}) {
   const mode = options.mode === 'editable' ? 'editable' : 'playable';
   const resolution = resolveInterpreter(input);
   if (!resolution.ok) return diagnose(input, mode, resolution);
@@ -162,8 +164,11 @@ export function parseLevel(input, options = {}) {
   };
 }
 
-function errorFrom(result) {
-  const error = new Error((result.errors ?? []).map((item) => item.message).join('\n') || '解析失败。');
+/** 带稳定错误码的异常：CLI 与上层都靠它判断，不解析 message。 */
+export interface CodedError extends Error { code?: string; errors?: ValidationIssue[] }
+
+function errorFrom(result: { code?: string; errors?: ValidationIssue[] }): CodedError {
+  const error = new Error((result.errors ?? []).map((item) => item.message).join('\n') || '解析失败。') as CodedError;
   error.code = result.code;
   error.errors = result.errors ?? [];
   return error;

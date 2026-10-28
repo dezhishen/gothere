@@ -1,12 +1,30 @@
 // 极简打包器：把一组本地 ES 模块包进互不干扰的 IIFE 作用域，得到单文件制品。
 // 支持的语法很窄，够用就好：
-//   import { a, b } from './x.js';        （单行、具名）
+//   import { a, b } from './x.ts';        （单行、具名）
 //   export const|let|function NAME ...    （行首）
-//   export { x } from './y.js';           （同名 binding 必须已经 import 过）
+//   export { x } from './y.ts';           （同名 binding 必须已经 import 过）
 // 不支持：默认导入、export *、多行 import、裸包名、node:*（制品外壳自己写那几行）。
 
 import { readFile } from 'node:fs/promises';
 import { dirname, relative, resolve, sep } from 'node:path';
+import ts from 'typescript';
+
+const SOURCE_EXTENSIONS = ['.ts', '.js'];
+
+/** 擦除类型：产物里只剩下运行时需要的 JS（不做降级，ES2023 原样保留）。 */
+function stripTypes(source, filename) {
+  const { outputText } = ts.transpileModule(source, {
+    fileName: filename,
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2023,
+      module: ts.ModuleKind.ESNext,
+      verbatimModuleSyntax: false,
+      isolatedModules: true,
+      removeComments: false,
+    },
+  });
+  return outputText;
+}
 
 /** 打包一个入口模块，返回 IIFE 源码块与模块数量。 */
 export async function bundleModules({ entry, root }) {
@@ -17,7 +35,7 @@ export async function bundleModules({ entry, root }) {
   const moduleFor = async (file) => {
     const filename = resolve(file);
     const local = relative(resolve(root, 'src'), filename);
-    if (local.startsWith('..' + sep) || local === '..' || !filename.endsWith('.js')) {
+    if (local.startsWith('..' + sep) || local === '..' || !SOURCE_EXTENSIONS.includes(filename.slice(filename.lastIndexOf('.')))) {
       throw new Error('Only local source modules may be packaged.');
     }
     if (visiting.has(filename)) throw new Error('Circular module dependency: ' + local);
@@ -25,7 +43,7 @@ export async function bundleModules({ entry, root }) {
     const identifier = '__module' + identifiers.size;
     identifiers.set(filename, identifier);
     visiting.add(filename);
-    let source = await readFile(filename, 'utf8');
+    let source = stripTypes(await readFile(filename, 'utf8'), filename);
     const exported = new Set();
     for (const match of source.matchAll(/^export\s+(?:const|let|function|async function)\s+([A-Za-z_$][\w$]*)/gm)) exported.add(match[1]);
     const imported = new Set();

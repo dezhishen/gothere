@@ -6,10 +6,10 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTextSource } from '../src/app/levelSource.js';
-import { runCli } from '../src/app/cli.js';
-import { CATEGORIES } from '../src/core/interpreters/factories/factory.js';
-import { parseTypes } from '../src/core/interpreters/factories/types.js';
+import { createTextSource } from '../src/app/levelSource.ts';
+import { runCli } from '../src/app/cli.ts';
+import { CATEGORIES } from '../src/core/interpreters/factories/factory.ts';
+import { parseTypes } from '../src/core/interpreters/factories/types.ts';
 
 /** 类型是纯 JSON：types/<category>/<kind>.type.json，这里读出来交给产品逻辑。 */
 async function loadTypes() {

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compileModel } from '../src/core/contract/compile.js';
-import { createLevelInterpreter } from '../src/core/interpreters/level-1.js';
-import { parseRecording } from '../src/core/interpreters/recording-1.js';
+import { compileModel } from '../src/core/contract/compile.ts';
+import { createLevelInterpreter } from '../src/core/interpreters/level-1.ts';
+import { parseRecording } from '../src/core/interpreters/recording-1.ts';
 import {
   KINDS,
   createGame,
@@ -17,7 +17,7 @@ import {
   resetInterpreters,
   resolveInterpreter,
   unregisterInterpreter,
-} from '../src/core/interpreters/index.js';
+} from '../src/core/interpreters/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const fixture = () => structuredClone(levels[0]);

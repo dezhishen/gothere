@@ -2,8 +2,8 @@
 // 只覆盖创作侧：读写关卡文档、校验、自检。不含游戏运行与玩家侧行为。
 // 内容通过 context.service（levelService）注入，因此 skill 自己不碰文件与网络。
 
-import { CODES, domainError } from './errors.js';
-import { describeTypes, platformInfo } from './levelService.js';
+import { CODES, domainError } from './errors.ts';
+import { describeTypes, platformInfo } from './levelService.ts';
 
 const DOC_INPUT = Object.freeze({
   type: 'object',

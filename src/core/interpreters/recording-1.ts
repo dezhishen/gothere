@@ -1,7 +1,7 @@
 // 解释器：回放记录 recording@1。处理的是「一次操作序列」这一类数据，不碰关卡内容。
 
-import { LIMITS } from '../contract/constants.js';
-import { replayRecording } from '../kernel/replay.js';
+import { LIMITS } from '../contract/constants.ts';
+import { replayRecording } from '../kernel/replay.ts';
 
 export const RECORDING_VERSION = 1;
 

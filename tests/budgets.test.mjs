@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSimulation } from '../src/core/kernel/engine.js';
-import { replayRecording } from '../src/core/kernel/replay.js';
+import { createSimulation } from '../src/core/kernel/engine.ts';
+import { replayRecording } from '../src/core/kernel/replay.ts';
 import { levels } from './levels-fixture.mjs';
 
 test('imported rules cannot accumulate an unbounded pending timer queue', () => {

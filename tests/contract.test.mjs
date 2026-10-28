@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 
 import './types-fixture.mjs';
 
-import { compileModel } from '../src/core/contract/compile.js';
-import { diffDocs } from '../src/core/contract/diff.js';
-import { migrate } from '../src/core/contract/migrate.js';
-import { createRng } from '../src/core/contract/prng.js';
-import { describe as describeType, eventsOfEntity, stateLabel } from '../src/core/contract/registry.js';
-import { validateDoc, validateLevel } from '../src/core/contract/validate.js';
-import { covers, platformSupports, requirementsOf } from '../src/core/contract/versions.js';
+import { compileModel } from '../src/core/contract/compile.ts';
+import { diffDocs } from '../src/core/contract/diff.ts';
+import { migrate } from '../src/core/contract/migrate.ts';
+import { createRng } from '../src/core/contract/prng.ts';
+import { describe as describeType, eventsOfEntity, stateLabel } from '../src/core/contract/registry.ts';
+import { validateDoc, validateLevel } from '../src/core/contract/validate.ts';
+import { covers, platformSupports, requirementsOf } from '../src/core/contract/versions.ts';
 import { levels } from './levels-fixture.mjs';
 
 const fixture = () => structuredClone(levels[0]);

@@ -4,10 +4,10 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES } from '../src/core/interpreters/factories/factory.js';
-import { resetFactories } from '../src/core/interpreters/factories/index.js';
-import { parseTypes, TYPES_SCHEMA } from '../src/core/interpreters/factories/types.js';
-import { validateLevel } from '../src/core/contract/validate.js';
+import { CATEGORIES } from '../src/core/interpreters/factories/factory.ts';
+import { resetFactories } from '../src/core/interpreters/factories/index.ts';
+import { parseTypes, TYPES_SCHEMA } from '../src/core/interpreters/factories/types.ts';
+import { validateLevel } from '../src/core/contract/validate.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 

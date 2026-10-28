@@ -1,21 +1,25 @@
-import { acceptsInput, stateLabel, typeDescriptor } from './core/contract/registry.js';
-import { validateLevel } from './core/contract/validate.js';
-import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.js';
-import { createDocSource, createTextSource } from './app/levelSource.js';
-import { resetFactories } from './core/interpreters/factories/index.js';
-import { parseTypes } from './core/interpreters/factories/types.js';
-import { createRenderer } from './scene.js';
+import { acceptsInput, stateLabel, typeDescriptor } from './core/contract/registry.ts';
+import { validateLevel } from './core/contract/validate.ts';
+import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.ts';
+import { createDocSource, createTextSource } from './app/levelSource.ts';
+import { resetFactories } from './core/interpreters/factories/index.ts';
+import { parseTypes } from './core/interpreters/factories/types.ts';
+import { createRenderer } from './scene.ts';
 
-const $ = (id) => document.getElementById(id);
+/** 取一个已知存在的元素：入口 HTML 里 id 是契约，取不到就是打包出错。 */
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 const renderer = createRenderer($('scene'));
 const completed = new Set();
 const subtitles = ['THE BRIDGE SITUATION', 'A SMALL INCONVENIENCE', 'TIMING IS EVERYTHING'];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let levels = [];
-let selected = 0, level = null, game = null;
+let levels: LevelDoc[] = [];
+let selected = 0;
+// boot() 保证在第一次渲染前赋值；用 definite assignment 断言而不是到处写 null 检查。
+let level!: LevelDoc;
+let game!: Game;
 let speed = 1, accumulator = 0, lastFrame = performance.now(), lastHud = '', lastEventKey = '';
-let replay = null, replayIndex = 0, terminalAt = null, toastTimer;
-const mechanismButtons = new Map();
+let replay: Recording | null = null, replayIndex = 0, terminalAt: number | null = null, toastTimer: ReturnType<typeof setTimeout>;
+const mechanismButtons = new Map<string, { hotspot: HTMLButtonElement; action: HTMLButtonElement }>();
 const timeLabel = (tick) => {
   const total = Math.floor(tick / 60);
   return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');

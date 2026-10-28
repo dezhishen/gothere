@@ -2,20 +2,30 @@
 // 版本先于内容；编辑器只跑前两层（editable），因此可以加载「暂时不可玩」的半成品。
 // 实体字段按**类别 schema** 校验：物品能写的字段与机关不同，写错槽会被直接挡下。
 
-import { LIMITS, WORLD } from './constants.js';
-import { eventsOfEntity, fieldsOfCategory, isSlot, isType, schemaOfCategory, tagsOfEntity, typeDescriptor } from './registry.js';
-import { factoryFor, getFactory } from '../interpreters/factories/index.js';
-import { SCHEMA_VERSION, requirementsOf } from './versions.js';
+import { LIMITS, WORLD } from './constants.ts';
+import { eventsOfEntity, fieldsOfCategory, isSlot, isType, schemaOfCategory, tagsOfEntity, typeDescriptor } from './registry.ts';
+import { factoryFor, getFactory } from '../interpreters/factories/index.ts';
+import { SCHEMA_VERSION, requirementsOf } from './versions.ts';
+
+import type { Action, Entity, LevelDoc, Rule, ValidationIssue, ValidationMode, ValidationResult } from './types.ts';
+
+type Obj = Record<string, unknown>;
+export interface ValidateOptions { mode?: ValidationMode }
+export interface ValidateReport extends ValidationResult {
+  valid: boolean;
+  mode: ValidationMode;
+  requirements: ReturnType<typeof requirementsOf>;
+}
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,47}$/;
 const REACT_INPUTS = Object.freeze(['input', 'contact']);
 
-const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const isNumber = (value) => typeof value === 'number' && Number.isFinite(value);
-const inRange = (value, min, max) => isNumber(value) && value >= min && value <= max;
-const isText = (value, max) => typeof value === 'string' && value.length > 0 && value.length <= max;
+const isObject = (value: unknown): value is Obj => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const inRange = (value: unknown, min: number, max: number): boolean => isNumber(value) && value >= min && value <= max;
+const isText = (value: unknown, max: number): value is string => typeof value === 'string' && value.length > 0 && value.length <= max;
 
-function finish(errors, mode, doc) {
+function finish(errors: ValidationIssue[], mode: ValidationMode, doc: unknown): ValidateReport {
   const ok = errors.length === 0;
   const code = ok ? 'OK' : (errors.some((item) => item.code === 'UNSUPPORTED_VERSION') ? 'UNSUPPORTED_VERSION' : 'VALIDATION_FAILED');
   return {
@@ -29,20 +39,20 @@ function finish(errors, mode, doc) {
   };
 }
 
-function isStateOf(entity, state) {
-  const type = typeDescriptor(entity && entity.kind);
-  return Boolean(type) && type.states.some((item) => item.id === state);
+function isStateOf(entity: Obj, state: unknown): boolean {
+  const type = typeDescriptor(entity && (entity.kind as string | undefined));
+  return Boolean(type) && type!.states.some((item) => item.id === state);
 }
 
 /** 运行前的完整校验（playable）。 */
-export function validateLevel(input) {
+export function validateLevel(input: unknown): ValidateReport {
   return validateDoc(input, { mode: 'playable' });
 }
 
-export function validateDoc(input, options = {}) {
-  const mode = options.mode === 'editable' ? 'editable' : 'playable';
-  const errors = [];
-  const fail = (code, path, message) => { errors.push({ code, path, message }); };
+export function validateDoc(input: unknown, options: ValidateOptions = {}): ValidateReport {
+  const mode: ValidationMode = options.mode === 'editable' ? 'editable' : 'playable';
+  const errors: ValidationIssue[] = [];
+  const fail = (code: string, path: string, message: string): void => { errors.push({ code, path, message }); };
 
   if (!isObject(input)) {
     fail('SCHEMA_INVALID', '', '关卡必须是一个 JSON 对象。');
@@ -71,7 +81,7 @@ export function validateDoc(input, options = {}) {
   }
 
   // 地图那一段（世界 / 角色 / 终点 / 地面）由地图工厂校验，这里只管骨架字段与实体规则。
-  const mapResult = getFactory('map').parseSection({
+  const mapResult = getFactory('map')!.parseSection({
     world: input.world,
     actor: input.actor,
     goal: input.goal,
@@ -80,7 +90,9 @@ export function validateDoc(input, options = {}) {
   });
   for (const item of mapResult.errors) fail(item.code, item.path, item.message);
 
-  const rawEntities = Array.isArray(input.entities) ? input.entities : [];
+  // 之后按“声明过的文档”读取；每个字段仍要过运行时检查，类型只是省掉噪音。
+  const doc = input as unknown as LevelDoc;
+  const rawEntities: Entity[] = Array.isArray(doc.entities) ? doc.entities : [];
   if (!Array.isArray(input.entities) || rawEntities.length > LIMITS.maxEntities) {
     fail('SCHEMA_INVALID', 'entities', 'entities 必须为最多 ' + LIMITS.maxEntities + ' 项的数组。');
   }
@@ -110,7 +122,7 @@ export function validateDoc(input, options = {}) {
     if (entity.typeVersion !== undefined && !(Number.isInteger(entity.typeVersion) && entity.typeVersion > 0)) {
       fail('SCHEMA_INVALID', path + '.typeVersion', 'typeVersion 必须是正整数：' + String(entity.id));
     }
-    const category = isType(entity.kind) ? typeDescriptor(entity.kind).category : null;
+    const category = isType(entity.kind) ? typeDescriptor(entity.kind)!.category : null;
     if (!category) return; // 类型层会报 TYPE_UNKNOWN，这里不再猜字段
     const schema = schemaOfCategory(category);
     const allowed = fieldsOfCategory(category);
@@ -128,13 +140,13 @@ export function validateDoc(input, options = {}) {
     }
   });
 
-  const rawRules = Array.isArray(input.rules) ? input.rules : [];
+  const rawRules: Rule[] = Array.isArray(doc.rules) ? doc.rules : [];
   if (!Array.isArray(input.rules) || rawRules.length > LIMITS.maxRules) {
     fail('SCHEMA_INVALID', 'rules', 'rules 必须为最多 ' + LIMITS.maxRules + ' 项的数组。');
   }
 
   // 4. 类型层：kind 与状态来自注册表；槽参数要与该类型的状态、该类的 schema 相符。
-  const byId = new Map();
+  const byId = new Map<string, Entity>();
   rawEntities.forEach((entity, index) => {
     if (!isObject(entity)) return;
     const path = 'entities[' + index + ']';
@@ -142,20 +154,20 @@ export function validateDoc(input, options = {}) {
       fail('TYPE_UNKNOWN', path + '.kind', '未知实体类型：' + String(entity.kind));
       return;
     }
-    const type = typeDescriptor(entity.kind);
+    const type = typeDescriptor(entity.kind)!;
     if (!isStateOf(entity, entity.state)) {
       fail('STATE_INVALID', path + '.state', '实体初始状态无效：' + String(entity.id));
     }
-    for (const name of schemaOfCategory(type.category).slots) {
+    for (const name of schemaOfCategory(type.category)!.slots) {
       const params = entity[name];
       if (params === undefined) continue;
-      checkSlot(entity, name, params, path + '.' + name, fail);
+      checkSlot(entity as unknown as Obj, name, params, path + '.' + name, fail);
     }
     if (!byId.has(entity.id)) byId.set(entity.id, entity);
   });
 
   // 5. 引用层：id 图、动作图与事件图。
-  const seen = new Set();
+  const seen = new Set<unknown>();
   rawEntities.forEach((entity, index) => {
     if (!isObject(entity) || typeof entity.id !== 'string') return;
     if (seen.has(entity.id)) fail('REFERENCE_INVALID', 'entities[' + index + '].id', '实体 id 重复：' + entity.id);
@@ -163,7 +175,7 @@ export function validateDoc(input, options = {}) {
   });
 
   let actionCount = 0;
-  const checkActions = (actions, path, depth) => {
+  const checkActions = (actions: Action[], path: string, depth: number): void => {
     if (!Array.isArray(actions) || actions.length === 0 || actions.length > LIMITS.maxActionsPerRule || depth > LIMITS.maxActionDepth) {
       fail('SCHEMA_INVALID', path, 'actions 需要 1～' + LIMITS.maxActionsPerRule + ' 项，after 嵌套最多 ' + LIMITS.maxActionDepth + ' 层。');
       return;
@@ -179,7 +191,7 @@ export function validateDoc(input, options = {}) {
       if (action.type === 'set') {
         const target = byId.get(action.target);
         if (!target) fail('REFERENCE_INVALID', here + '.target', 'set 动作的目标无效：' + String(action.target));
-        else if (!isStateOf(target, action.state)) fail('REFERENCE_INVALID', here + '.state', 'set 动作的状态无效：' + String(action.state));
+        else if (!isStateOf(target as unknown as Obj, action.state)) fail('REFERENCE_INVALID', here + '.state', 'set 动作的状态无效：' + String(action.state));
       } else if (action.type === 'after') {
         if (!Number.isInteger(action.ticks) || !inRange(action.ticks, 1, LIMITS.maxDelayTicks)) {
           fail('SCHEMA_INVALID', here + '.ticks', 'after.ticks 必须是 1～' + LIMITS.maxDelayTicks + ' 的整数。');
@@ -213,18 +225,19 @@ export function validateDoc(input, options = {}) {
 
   // 6. 语义层：几何可达 + 需求有人能提供（只有 playable 才跑）。
   if (mode === 'playable' && errors.length === 0) {
-    const terrain = getFactory('map').terrain({ platforms: input.platforms, stairs: input.stairs });
-    if (!terrain.supports(input.actor.x)) fail('SEMANTIC_INVALID', 'actor.x', '角色起点需要位于地面上。');
-    if (!terrain.supports(input.goal.x)) fail('SEMANTIC_INVALID', 'goal.x', '终点需要位于地面上。');
-    const provided = new Set();
+    const terrain = getFactory('map')!.terrain!({ platforms: doc.platforms, stairs: doc.stairs });
+    if (!terrain.supports(doc.actor.x)) fail('SEMANTIC_INVALID', 'actor.x', '角色起点需要位于地面上。');
+    if (!terrain.supports(doc.goal.x)) fail('SEMANTIC_INVALID', 'goal.x', '终点需要位于地面上。');
+    const provided = new Set<string>();
     for (const entity of rawEntities) {
       for (const tag of tagsOfEntity(entity)) provided.add(tag);
     }
     rawEntities.forEach((entity, index) => {
-      const reacts = entity.reacts;
+      const reacts = (entity as unknown as Obj).reacts;
       if (!isObject(reacts) || !isObject(reacts.need)) return;
       const here = 'entities[' + index + '].reacts.need';
-      for (const tag of reacts.need.tags ?? []) {
+      const needed = Array.isArray(reacts.need.tags) ? reacts.need.tags as string[] : [];
+      for (const tag of needed) {
         if (!provided.has(tag)) {
           fail('SEMANTIC_INVALID', here + '.tags', '需求标签 ' + tag + ' 没有任何元素提供，这条需求永远满足不了。');
         }
@@ -254,7 +267,7 @@ function checkSlot(entity, name, params, path, fail) {
     }
   };
   if (name === 'reacts') {
-    if (params.on !== undefined && !REACT_INPUTS.includes(params.on)) {
+    if (params.on !== undefined && !REACT_INPUTS.includes(params.on as string)) {
       fail('SCHEMA_INVALID', path + '.on', 'reacts.on 只能是 ' + REACT_INPUTS.join(' / ') + '。');
     }
     requireState('from');

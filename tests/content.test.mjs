@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { validateLevel } from '../src/core/contract/validate.js';
-import { createDocSource, createTextSource } from '../src/app/levelSource.js';
-import { parseManifest } from '../src/core/interpreters/index.js';
+import { validateLevel } from '../src/core/contract/validate.ts';
+import { createDocSource, createTextSource } from '../src/app/levelSource.ts';
+import { parseManifest } from '../src/core/interpreters/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const root = new URL('../', import.meta.url);

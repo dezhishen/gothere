@@ -5,11 +5,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createFactory } from '../src/core/interpreters/factories/factory.js';
-import { registerFactory, resetFactories, unregisterFactory } from '../src/core/interpreters/factories/index.js';
-import { describe, listTypes, typeDescriptor } from '../src/core/contract/registry.js';
-import { validateLevel } from '../src/core/contract/validate.js';
-import { createGame, describePlatform } from '../src/core/interpreters/index.js';
+import { createFactory } from '../src/core/interpreters/factories/factory.ts';
+import { registerFactory, resetFactories, unregisterFactory } from '../src/core/interpreters/factories/index.ts';
+import { describe, listTypes, typeDescriptor } from '../src/core/contract/registry.ts';
+import { validateLevel } from '../src/core/contract/validate.ts';
+import { createGame, describePlatform } from '../src/core/interpreters/index.ts';
 
 const play = (doc, inputs = []) => {
   const game = createGame(doc);

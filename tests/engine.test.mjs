@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import './types-fixture.mjs';
 
-import { createSimulation } from '../src/core/kernel/engine.js';
-import { replayRecording } from '../src/core/kernel/replay.js';
-import { validateLevel } from '../src/core/contract/validate.js';
+import { createSimulation } from '../src/core/kernel/engine.ts';
+import { replayRecording } from '../src/core/kernel/replay.ts';
+import { validateLevel } from '../src/core/contract/validate.ts';
 
 const fixture = () => ({
   schemaVersion: 1, id: 'fixture', name: '测试关卡', description: '测试',

@@ -1,7 +1,7 @@
 // 回放：记录输入 {inputs[{tick,source}], untilTick, status} 并用同一内核重推，不是逐帧录制。
 
-import { LIMITS } from '../contract/constants.js';
-import { createSimulation } from './engine.js';
+import { LIMITS } from '../contract/constants.ts';
+import { createSimulation } from './engine.ts';
 
 const STATUSES = ['ready', 'running', 'paused', 'lost', 'won'];
 

@@ -6,11 +6,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTypes } from '../src/core/interpreters/factories/types.js';
-import { resetFactories } from '../src/core/interpreters/factories/index.js';
-import { describe, listTypes } from '../src/core/contract/registry.js';
-import { validateLevel } from '../src/core/contract/validate.js';
-import { createGame } from '../src/core/interpreters/index.js';
+import { parseTypes } from '../src/core/interpreters/factories/types.ts';
+import { resetFactories } from '../src/core/interpreters/factories/index.ts';
+import { describe, listTypes } from '../src/core/contract/registry.ts';
+import { validateLevel } from '../src/core/contract/validate.ts';
+import { createGame } from '../src/core/interpreters/index.ts';
 import { readBuiltinTypes } from './types-fixture.mjs';
 
 const trapdoor = {

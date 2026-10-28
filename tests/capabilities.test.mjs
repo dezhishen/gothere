@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { STAGES, listSlots, registerSlot } from '../src/core/capabilities/index.js';
-import { slotsOfEntity } from '../src/core/contract/registry.js';
-import { createGame } from '../src/core/interpreters/index.js';
+import { STAGES, listSlots, registerSlot } from '../src/core/capabilities/index.ts';
+import { slotsOfEntity } from '../src/core/contract/registry.ts';
+import { createGame } from '../src/core/interpreters/index.ts';
 import { levels } from './levels-fixture.mjs';
 
 const axeLevel = () => structuredClone(levels.find((level) => level.id === 'the-axe'));

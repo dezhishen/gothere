@@ -10,13 +10,13 @@ test('modules only depend downwards', async () => {
 });
 
 test('layer classification follows the documented tree', () => {
-  assert.equal(layerOf('core/contract/validate.js'), 'L0');
-  assert.equal(layerOf('core/capabilities/holdable.js'), 'L0');
-  assert.equal(layerOf('core/interpreters/factories/item.js'), 'L0');
-  assert.equal(layerOf('core/kernel/engine.js'), 'L1-kernel');
-  assert.equal(layerOf('core/interpreters/index.js'), 'L1-interpreter');
-  assert.equal(layerOf('app/skills.js'), 'L1-app');
-  assert.equal(layerOf('app/levelSource.js'), 'L1-app');
-  assert.equal(layerOf('main.js'), 'L3-shell');
-  assert.equal(layerOf('scene.js'), 'feature');
+  assert.equal(layerOf('core/contract/validate.ts'), 'L0');
+  assert.equal(layerOf('core/capabilities/holdable.ts'), 'L0');
+  assert.equal(layerOf('core/interpreters/factories/item.ts'), 'L0');
+  assert.equal(layerOf('core/kernel/engine.ts'), 'L1-kernel');
+  assert.equal(layerOf('core/interpreters/index.ts'), 'L1-interpreter');
+  assert.equal(layerOf('app/skills.ts'), 'L1-app');
+  assert.equal(layerOf('app/levelSource.ts'), 'L1-app');
+  assert.equal(layerOf('main.ts'), 'L3-shell');
+  assert.equal(layerOf('scene.ts'), 'feature');
 });

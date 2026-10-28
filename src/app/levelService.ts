@@ -1,11 +1,11 @@
 // 用例层：无 DOM、无 node:*、无网络。内容由 levelSource 注入，编辑器、CLI 与 Agent 走同一份实现。
 
-import { LIMITS } from '../core/contract/constants.js';
-import { diffDocs } from '../core/contract/diff.js';
-import { describe } from '../core/contract/registry.js';
-import { createGame, describePlatform, parseLevel, replayLevel } from '../core/interpreters/index.js';
-import { CODES, domainError, errorItem, toCode } from './errors.js';
-import { summarize } from './levelSource.js';
+import { LIMITS } from '../core/contract/constants.ts';
+import { diffDocs } from '../core/contract/diff.ts';
+import { describe } from '../core/contract/registry.ts';
+import { createGame, describePlatform, parseLevel, replayLevel } from '../core/interpreters/index.ts';
+import { CODES, domainError, errorItem, toCode } from './errors.ts';
+import { summarize } from './levelSource.ts';
 
 export function platformInfo() {
   return { ok: true, code: CODES.OK, data: describePlatform() };

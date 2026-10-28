@@ -225,6 +225,20 @@ pnpm skill
 读同一批 `types/*.type.json`，用同一套规则校验，得到同样一份
 `{ mechanism: {...}, item: {...} }` 交给 `resetFactories`。
 
+## TypeScript
+
+源码是 TypeScript（`src/**/*.ts`），运行时**不编译**：Node 26 原生擦除类型，
+打包器（`scripts/bundle.mjs`）用 `ts.transpileModule` 剥离类型，开发服务器对
+`.ts` 请求即时转译。产物与之前一样是单文件（HTML / CLI / 二进制）。
+
+- 类型词汇表：`src/core/contract/types.ts`（类别、动作、声明槽、文档、编译模型、快照、
+  校验结果、工厂/解释器接口）。其它模块只实现这些接口，不再各编一套形状。
+- 工厂与契约层已经是严格类型：`pnpm typecheck` 覆盖
+  `core/contract`、`core/capabilities`、`core/interpreters/factories`。
+- 迁移是分阶段的：`tsconfig.json` 的 `include` 是白名单，补完注解后把路径加进去即可
+  （待补：`interpreters/*`、`kernel/**`、`app/**`、`scene.ts`、`main.ts`）。
+- 分层门禁只看**运行时**依赖（`import type` 会被擦除，不算边）。
+
 ## 样式
 
 样式入口是 `src/styles/app.css`，由 Tailwind CSS v4 编译成 `src/style.css`（生成物，不入库）。

@@ -2,12 +2,12 @@
 // 内核只做一件事：按固定阶段**解释元素自己声明的东西**。
 // 元素里没有代码，所以没有任何人能改流程；要改流程只能改这里。
 
-import { createActorView } from '../contract/actor.js';
-import { compileModel } from '../contract/compile.js';
-import { LIMITS, MESSAGES, TICKS_PER_SECOND } from '../contract/constants.js';
-import { itemCard } from '../contract/item.js';
-import { stateLabel } from '../contract/registry.js';
-import { validateDoc } from '../contract/validate.js';
+import { createActorView } from '../contract/actor.ts';
+import { compileModel } from '../contract/compile.ts';
+import { LIMITS, MESSAGES, TICKS_PER_SECOND } from '../contract/constants.ts';
+import { itemCard } from '../contract/item.ts';
+import { stateLabel } from '../contract/registry.ts';
+import { validateDoc } from '../contract/validate.ts';
 
 const clone = (value) => structuredClone(value);
 const quantize = (value) => Math.round(value * 1e6) / 1e6;

@@ -4,11 +4,11 @@
 // 纪律：--json 时 stdout 只有协议对象，日志一律走 stderr；错误只靠稳定错误码。
 // 退出码：0 成功 / 2 用法或找不到 / 3 校验失败 / 4 模拟失败 / 5 内部错误。
 
-import { stateLabel } from '../core/contract/registry.js';
-import { resetFactories } from '../core/interpreters/factories/index.js';
-import { CODES, domainError, exitCode } from './errors.js';
-import { createLevelService } from './levelService.js';
-import { invoke } from './skills.js';
+import { stateLabel } from '../core/contract/registry.ts';
+import { resetFactories } from '../core/interpreters/factories/index.ts';
+import { CODES, domainError, exitCode } from './errors.ts';
+import { createLevelService } from './levelService.ts';
+import { invoke } from './skills.ts';
 
 /**
  * runCli(argv, { loadDocs, readText, resolvePath, stdout, stderr, version }) → 退出码
