@@ -1,5 +1,7 @@
-import { createSimulation, replayRecording, stateLabel, validateLevel } from './core/engine.js';
-import { levels } from './levels.js';
+import { stateLabel } from './core/contract/registry.js';
+import { validateLevel } from './core/contract/validate.js';
+import { createGame, describePlatform, replayLevel } from './core/interpreter/registry.js';
+import { createDocSource, createTextSource } from './app/levelSource.js';
 import { createRenderer } from './scene.js';
 
 const $ = (id) => document.getElementById(id);
@@ -7,7 +9,8 @@ const renderer = createRenderer($('scene'));
 const completed = new Set();
 const subtitles = ['THE BRIDGE SITUATION', 'A SMALL INCONVENIENCE', 'TIMING IS EVERYTHING'];
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let selected = 0, level = structuredClone(levels[0]), game = createSimulation(level);
+let levels = [];
+let selected = 0, level = null, game = null;
 let speed = 1, accumulator = 0, lastFrame = performance.now(), lastHud = '', lastEventKey = '';
 let replay = null, replayIndex = 0, terminalAt = null, toastTimer;
 const mechanismButtons = new Map();
@@ -35,7 +38,8 @@ function renderTabs() {
   });
 }
 function loadLevel(next, index = -1) {
-  level = structuredClone(next); game = createSimulation(level); selected = index;
+  if (!next) return;
+  level = structuredClone(next); game = createGame(level); selected = index;
   replay = null; replayIndex = 0; accumulator = 0; terminalAt = null; lastHud = ''; lastEventKey = '';
   $('scene-title').textContent = level.name;
   $('level-description').textContent = level.description;
@@ -64,11 +68,13 @@ function loadLevel(next, index = -1) {
   renderTabs(); updateHud(game.snapshot());
 }
 function resetGame(start = false) {
+  if (!game) return;
   replay = null; game.reset(); accumulator = 0; terminalAt = null; lastHud = ''; lastEventKey = '';
   if (start) game.start();
   updateHud(game.snapshot());
 }
 function togglePlay() {
+  if (!game) return;
   const status = game.snapshot().status;
   if (['won', 'lost'].includes(status)) resetGame(true);
   else if (status === 'running') game.pause();
@@ -133,20 +139,22 @@ function updateHud(state) {
 }
 $('play').addEventListener('click', togglePlay);
 $('reset').addEventListener('click', () => resetGame());
-$('step').addEventListener('click', () => { game.singleStep(); lastHud = ''; updateHud(game.snapshot()); });
+$('step').addEventListener('click', () => { if (!game) return; game.singleStep(); lastHud = ''; updateHud(game.snapshot()); });
 $('speed').addEventListener('click', () => { speed = speed === 4 ? 1 : speed * 2; $('speed').textContent = speed + '×'; $('speed').setAttribute('aria-label', '当前 ' + speed + ' 倍速，点击切换'); });
 $('hint').addEventListener('click', () => {
   const shown = $('hint-text').hidden; $('hint-text').hidden = !shown;
   $('hint').setAttribute('aria-expanded', String(shown)); $('hint').textContent = shown ? '收起提示 ↑' : '需要一点提示？ ↗';
 });
 $('result-action').addEventListener('click', () => {
+  if (!game) return;
   if (game.snapshot().status === 'won' && selected >= 0 && selected < levels.length - 1) loadLevel(levels[selected + 1], selected + 1);
   else resetGame();
 });
 $('replay').addEventListener('click', () => {
+  if (!game) return;
   const recording = game.recording();
-  try { replayRecording(level, recording); } catch (error) { toast('无法回放：' + error.message); return; }
-  replay = recording; replayIndex = 0; game = createSimulation(level); game.start(); terminalAt = null; accumulator = 0; lastHud = ''; lastEventKey = '';
+  try { replayLevel(level, recording); } catch (error) { toast('无法回放：' + error.message); return; }
+  replay = recording; replayIndex = 0; game = createGame(level); game.start(); terminalAt = null; accumulator = 0; lastHud = ''; lastEventKey = '';
   updateHud(game.snapshot());
 });
 function tickReplay() {
@@ -159,6 +167,7 @@ function tickReplay() {
   }
 }
 function openData() {
+  if (!game) return;
   if (game.snapshot().status === 'running') game.pause();
   $('level-json').value = JSON.stringify(level, null, 2); $('data-error').hidden = true;
   $('data-dialog').showModal(); lastHud = ''; updateHud(game.snapshot());
@@ -170,7 +179,7 @@ $('apply-level').addEventListener('click', () => {
   try {
     if ($('level-json').value.length > 131072) throw new Error('关卡文件不能超过 128 KiB。');
     const input = JSON.parse($('level-json').value);
-    const result = validateLevel(input); if (!result.valid) throw new Error(result.errors.join('\n'));
+    const result = validateLevel(input); if (!result.valid) throw new Error(result.messages.join('\n'));
     loadLevel(input); $('data-dialog').close(); toast('关卡已加载，可以开始新的旅程。');
   } catch (error) { showDataError(error instanceof SyntaxError ? 'JSON 格式有误，请检查引号、逗号和括号。\n' + error.message : error.message); }
 });
@@ -186,14 +195,14 @@ $('level-file').addEventListener('change', async (event) => {
 $('export-level').addEventListener('click', () => {
   try {
     const input = JSON.parse($('level-json').value);
-    const result = validateLevel(input); if (!result.valid) throw new Error(result.errors.join('\n'));
+    const result = validateLevel(input); if (!result.valid) throw new Error(result.messages.join('\n'));
     const url = URL.createObjectURL(new Blob([JSON.stringify(input, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a'); link.href = url; link.download = input.id + '.json';
     document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (error) { showDataError('无法导出：' + error.message); }
 });
 $('open-project').addEventListener('click', async () => {
-  if (game.snapshot().status === 'running') game.pause();
+  if (game && game.snapshot().status === 'running') game.pause();
   $('project-dialog').showModal(); lastHud = ''; updateHud(game.snapshot());
   try {
     const embedded = $('portable-data');
@@ -211,9 +220,10 @@ document.addEventListener('keydown', (event) => {
   if (Number.isInteger(index) && index >= 0 && index < levels.length) loadLevel(levels[index], index);
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && game.snapshot().status === 'running') { game.pause(); accumulator = 0; }
+  if (document.hidden && game && game.snapshot().status === 'running') { game.pause(); accumulator = 0; }
 });
 function frame(now) {
+  if (!game) { requestAnimationFrame(frame); return; }
   const dt = Math.min(100, Math.max(0, now - lastFrame)); lastFrame = now;
   if (game.snapshot().status === 'running') {
     accumulator += dt * speed;
@@ -226,4 +236,34 @@ function frame(now) {
   renderer.draw(level, state, { time: reducedMotion ? 0 : now / 1000, reducedMotion, fallAge: terminalAt === null ? 0 : (now - terminalAt) / 1000 });
   requestAnimationFrame(frame);
 }
-loadLevel(levels[0], 0); requestAnimationFrame(frame);
+// 主线程把解析器支持的 schema 暴露出去：调试、自动化与浏览器内 Agent 都能发现平台能力。
+window.gothere = Object.freeze({
+  platform: () => describePlatform(),
+  levels: () => levels.map((item) => ({ id: item.id, name: item.name })),
+  validate: (doc) => validateLevel(doc),
+});
+
+// 内容源：单文件产物读内联 JSON 块（零外部请求），开发态走 HTTP 读 levels/*.level.json。
+async function loadContent() {
+  const embedded = $('levels-data');
+  if (embedded) return createDocSource(JSON.parse(embedded.textContent).levels).all();
+  const source = createTextSource({
+    readText: async (path) => {
+      const response = await fetch('/' + path, { cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.text();
+    },
+  });
+  return source.all();
+}
+
+async function boot() {
+  levels = await loadContent();
+  loadLevel(levels[0], 0);
+  requestAnimationFrame(frame);
+}
+
+boot().catch((error) => {
+  console.error('关卡读取失败：', error);
+  toast('关卡读取失败：' + error.message);
+});

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "first-bridge",
+  "name": "桥呢？桥呢！",
+  "description": "他已经准备出发了。桥还没有。你知道该帮谁一下。",
+  "hint": "出发后，点击桥边的圆形开关。让木桥在他走到缺口之前放下。",
+  "world": {
+    "width": 1200,
+    "height": 640,
+    "groundY": 440
+  },
+  "actor": {
+    "x": 95,
+    "speed": 68
+  },
+  "goal": {
+    "x": 1100
+  },
+  "platforms": [
+    {
+      "x": 0,
+      "width": 440
+    },
+    {
+      "x": 620,
+      "width": 580
+    }
+  ],
+  "entities": [
+    {
+      "id": "bridge",
+      "kind": "bridge",
+      "x": 440,
+      "width": 180,
+      "state": "folded",
+      "label": "伸缩木桥"
+    },
+    {
+      "id": "lever",
+      "kind": "switch",
+      "x": 340,
+      "width": 28,
+      "state": "off",
+      "label": "木桥开关"
+    }
+  ],
+  "rules": [
+    {
+      "on": {
+        "type": "click",
+        "source": "lever"
+      },
+      "actions": [
+        {
+          "type": "set",
+          "target": "lever",
+          "state": "on"
+        },
+        {
+          "type": "set",
+          "target": "bridge",
+          "state": "extended"
+        }
+      ]
+    }
+  ]
+}

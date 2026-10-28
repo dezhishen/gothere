@@ -5,7 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { networkInterfaces } from 'node:os';
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
-  '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.md':'text/plain; charset=utf-8' };
+  '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.md':'text/plain; charset=utf-8',
+  '.json':'application/json; charset=utf-8' };
 
 export function makeServer({ portableOnly = false } = {}) {
   return createServer(async (request, response) => {
@@ -25,7 +26,7 @@ export function makeServer({ portableOnly = false } = {}) {
         response.end(request.method === 'HEAD' ? undefined : html);
         return;
       }
-      const allowed = pathname === '/' || pathname === '/index.html' || pathname === '/favicon.svg' || pathname === '/project.md' || pathname.startsWith('/src/');
+      const allowed = pathname === '/' || pathname === '/index.html' || pathname === '/favicon.svg' || pathname === '/project.md' || pathname.startsWith('/src/') || pathname.startsWith('/levels/');
       if (!allowed || pathname.includes('\\') || pathname.includes('\0')) { send(404, 'Not found'); return; }
       const file = await realpath(resolve(ROOT, '.' + (pathname === '/' ? '/index.html' : pathname)));
       const rel = relative(ROOT, file);

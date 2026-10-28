@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSimulation, replayRecording } from '../src/core/engine.js';
-import { levels } from '../src/levels.js';
+import { createSimulation } from '../src/core/kernel/engine.js';
+import { replayRecording } from '../src/core/kernel/replay.js';
+import { levels } from './levels-fixture.mjs';
 
 test('imported rules cannot accumulate an unbounded pending timer queue', () => {
   const level=structuredClone(levels[0]);

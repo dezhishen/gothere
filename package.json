@@ -10,11 +10,13 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "cli": "node bin/gothere.mjs",
     "css": "node scripts/css.mjs",
     "css:watch": "node scripts/css.mjs --watch",
     "build": "node scripts/build.mjs",
     "start": "node server.mjs",
     "share": "node scripts/share.mjs",
+    "check:layers": "node scripts/check-layers.mjs",
     "pretest": "node scripts/css.mjs",
     "test": "node --test tests/*.test.mjs",
     "pretest:coverage": "node scripts/css.mjs",
@@ -27,5 +29,8 @@
     "@tailwindcss/cli": "^4.3.3",
     "playwright": "^1.64.1",
     "tailwindcss": "^4.3.3"
+  },
+  "bin": {
+    "gothere": "bin/gothere.mjs"
   }
 }

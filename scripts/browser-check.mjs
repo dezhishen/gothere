@@ -3,9 +3,10 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { makeServer } from '../server.mjs';
-import { levels } from '../src/levels.js';
 import { buildPortable } from './build.mjs';
 import { launchOptions } from './browser.mjs';
+
+const baseLevel = JSON.parse(await readFile(new URL('../levels/first-bridge.level.json', import.meta.url), 'utf8'));
 
 await mkdir(new URL('../artifacts/', import.meta.url), { recursive: true });
 const artifact = (name) => new URL('../artifacts/' + name, import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1');
@@ -79,11 +80,11 @@ try {
   await page.locator('#apply-level').click();
   check(await page.locator('#data-error').isVisible(), 'malformed JSON displays an error');
   check(await page.locator('#data-dialog').evaluate(e=>e.open), 'invalid data does not close editor');
-  const invalid=structuredClone(levels[0]);invalid.rules[0].actions[0].target='missing';
+  const invalid=structuredClone(baseLevel);invalid.rules[0].actions[0].target='missing';
   await page.locator('#level-json').fill(JSON.stringify(invalid));
   await page.locator('#apply-level').click();
   check((await page.locator('#data-error').textContent()).includes('无效'), 'invalid references are rejected');
-  const custom=structuredClone(levels[0]);custom.id='my-first-map';custom.name='我的第一张地图';
+  const custom=structuredClone(baseLevel);custom.id='my-first-map';custom.name='我的第一张地图';
   await page.locator('#level-file').setInputFiles({name:'my-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(custom))});
   const downloadPromise=page.waitForEvent('download'); await page.locator('#export-level').click();
   const download=await downloadPromise;await download.saveAs(artifact('exported-level.json'));

@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "quiet-corner",
+  "name": "借过一下",
+  "description": "这台风扇有自己的想法。借它停机的四秒，赶紧通过。",
+  "hint": "风扇只会安静 4 秒。让他靠近风扇时再点击，经过后就安全了。踩下压力板会自动开门。",
+  "world": {
+    "width": 1200,
+    "height": 640,
+    "groundY": 440
+  },
+  "actor": {
+    "x": 95,
+    "speed": 68
+  },
+  "goal": {
+    "x": 1100
+  },
+  "platforms": [
+    {
+      "x": 0,
+      "width": 1200
+    }
+  ],
+  "entities": [
+    {
+      "id": "fan",
+      "kind": "hazard",
+      "x": 585,
+      "width": 58,
+      "state": "running",
+      "label": "旧风扇"
+    },
+    {
+      "id": "plate",
+      "kind": "plate",
+      "x": 785,
+      "width": 50,
+      "state": "idle",
+      "label": "门前压力板"
+    },
+    {
+      "id": "gate",
+      "kind": "gate",
+      "x": 955,
+      "width": 24,
+      "state": "closed",
+      "label": "花园小门"
+    }
+  ],
+  "rules": [
+    {
+      "on": {
+        "type": "click",
+        "source": "fan"
+      },
+      "if": [
+        {
+          "entity": "fan",
+          "state": "running"
+        }
+      ],
+      "actions": [
+        {
+          "type": "set",
+          "target": "fan",
+          "state": "stopped"
+        },
+        {
+          "type": "after",
+          "ticks": 240,
+          "actions": [
+            {
+              "type": "set",
+              "target": "fan",
+              "state": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "on": {
+        "type": "enter",
+        "source": "plate"
+      },
+      "actions": [
+        {
+          "type": "set",
+          "target": "gate",
+          "state": "open"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "levels@1",
+  "levels": [
+    {
+      "id": "first-bridge",
+      "file": "first-bridge.level.json"
+    },
+    {
+      "id": "quiet-corner",
+      "file": "quiet-corner.level.json"
+    },
+    {
+      "id": "just-in-time",
+      "file": "just-in-time.level.json"
+    }
+  ]
+}

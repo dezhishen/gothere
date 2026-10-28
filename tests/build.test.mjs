@@ -11,6 +11,13 @@ test('builds a self-contained playable HTML without a local server', async () =>
   const html = await readFile(new URL('../dist/gothere-play.html', import.meta.url), 'utf8');
   assert.ok(html.includes('<title>一定要到达那里</title>'));
   assert.ok(html.includes('id="portable-data"'));
+  assert.ok(html.includes('id="levels-data"'), 'levels are inlined as JSON');
+  const embeddedLevels = html.match(/<script id="levels-data" type="application\/json">([\s\S]*?)<\/script>/);
+  const levelPayload = JSON.parse(embeddedLevels[1]);
+  assert.equal(levelPayload.schema, 'levels@1');
+  assert.ok(levelPayload.levels.length >= 3);
+  assert.equal(levelPayload.levels[0].id, 'first-bridge');
+  assert.ok(levelPayload.levels.every((level) => level.schemaVersion === 1));
   assert.ok(html.includes('function createSimulation'));
   assert.ok(html.includes('--color-paper'), 'Tailwind design tokens are inlined');
   assert.ok(html.includes('--font-serif'), 'Tailwind font tokens are inlined');

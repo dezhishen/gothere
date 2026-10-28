@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import * as core from '../src/core/engine.js';
+import { createSimulation } from '../src/core/kernel/engine.js';
+import { replayRecording } from '../src/core/kernel/replay.js';
+import { validateLevel } from '../src/core/contract/validate.js';
 
 const fixture = () => ({
   schemaVersion: 1, id: 'fixture', name: '测试关卡', description: '测试',
@@ -19,11 +21,10 @@ const fixture = () => ({
 });
 
 test('provides a headless simulation independent of the renderer', () => {
-  assert.equal(typeof core.createSimulation, 'function');
+  assert.equal(typeof createSimulation, 'function');
 });
 
 {
-  const { createSimulation, validateLevel, replayRecording } = core;
   test('does not mutate the input level', () => {
     const level = fixture(); const before = structuredClone(level);
     const game = createSimulation(level); game.start(); game.click('lever'); game.step(100);

@@ -21,6 +21,26 @@ pnpm dev
 
 服务器会显示局域网地址。局域网访问受网络隔离、防火墙和客户端影响；手机优先使用下面的公网试玩方式。
 
+## 给 AI Agent 的创作侧 CLI
+
+平台把「解析器（interpreter）」和「运行」分开：每个解释器声明自己支持的 schema、
+类型与能力版本，平台按文档的版本要求选一个解释器来解析并运行；内容只贡献 JSON。
+
+```sh
+pnpm cli skills --json                  # 能力清单 + 解释器支持矩阵
+pnpm cli platform                       # 解释器与平台整体支持集
+pnpm cli schema bridge                  # 某类型的字段、状态、事件、能力
+pnpm cli level list
+pnpm cli level validate demo.level.json --mode playable --json
+pnpm cli level simulate first-bridge --inputs '[{"tick":1,"source":"lever"}]' --json
+pnpm cli level diff first-bridge quiet-corner --json
+```
+
+约定：`--json` 时 stdout 只有协议对象（日志走 stderr）；错误只靠稳定错误码；退出码
+0 成功 / 2 用法错误 / 3 校验失败 / 4 模拟失败 / 5 内部错误。清单只列已实现的只读
+能力，写操作（如 `level.apply`）在实现之前不会出现。浏览器里可以用
+`window.gothere.platform()` 拿到同一份支持矩阵。
+
 ## 手机与异地试玩
 
 ```sh
