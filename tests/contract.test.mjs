@@ -12,26 +12,36 @@ import { levels } from './levels-fixture.mjs';
 
 const fixture = () => structuredClone(levels[0]);
 
-test('registry describes types, capabilities and fields from a single table', () => {
-  const described = describeType('switch');
-  assert.deepEqual(described.states.map((item) => item.id), ['off', 'on']);
-  assert.deepEqual(described.events, ['click']);
-  assert.deepEqual(described.capabilities.map((item) => item.name), ['clickable']);
-  assert.ok(described.fields.some((field) => field.key === 'x'));
+test('registry describes each category from its own schema', () => {
+  const switchType = describeType('switch');
+  assert.deepEqual(switchType.states.map((item) => item.id), ['off', 'on']);
+  assert.deepEqual(switchType.events, ['click']);
+  assert.deepEqual(switchType.slots.map((item) => item.name), ['reacts']);
+  assert.equal(switchType.schema.category, 'mechanism');
+  assert.ok(switchType.fields.includes('blocks'));
+  assert.ok(!switchType.fields.includes('carryable'), '机关没有「可携带」这种声明');
   assert.equal(describeType('ropeBridge'), null);
+
+  const keyType = describeType('key');
+  assert.deepEqual(keyType.tags, ['key', 'yellow']);
+  assert.equal(keyType.consumedState, 'used');
+  assert.deepEqual(keyType.fields, ['id', 'kind', 'typeVersion', 'x', 'y', 'width', 'label', 'state', 'tags', 'reacts', 'harms', 'carryable']);
+
   const all = describeType();
-  assert.ok(all.types.length >= 7);
-  assert.deepEqual(all.capabilities.map((item) => item.id).sort(), ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'patrol', 'region', 'verticalRide']);
+  assert.equal(all.categories.length, 3);
+  assert.deepEqual(all.slots.map((item) => item.id).sort(), ['blocks', 'carryable', 'ground', 'harms', 'lifts', 'moves', 'reacts']);
 });
 
-test('capabilities are data: a preset can gain an event without new code', () => {
+test('an entity can gain behaviour by declaring a slot, without new code', () => {
   const level = fixture();
-  level.entities[0].capabilities = { clickable: {} };
+  // 木桥原本只会「提供地面」；给它加一条 reacts 声明，它就能被点。
+  level.entities[0].reacts = { on: 'input', from: 'extended', actions: [{ type: 'become', state: 'folded' }] };
   level.rules.push({ on: { type: 'click', source: 'bridge' }, actions: [{ type: 'set', target: 'lever', state: 'on' }] });
   assert.equal(validateLevel(level).ok, true);
-  assert.deepEqual(eventsOfEntity(level.entities[0]).includes('click'), true);
+  assert.equal(eventsOfEntity(level.entities[0]).includes('click'), true);
   const model = compileModel(level);
-  assert.equal(model.entities[0].traits.clickable, true);
+  assert.equal(model.entities[0].reacts.on, 'input');
+  assert.equal(model.entities[0].ground.inState, 'extended');
 });
 
 test('editable loads half-built levels while playable refuses unreachable geometry', () => {
@@ -53,17 +63,36 @@ test('the version gate runs before content and does not guess', () => {
   assert.equal(result.errors[0].path, 'schemaVersion');
 });
 
-test('unknown types and unknown capabilities report their own codes', () => {
+test('unknown types and cross-category slots report their own codes', () => {
   const unknownType = fixture();
   unknownType.entities[0].kind = 'teleport';
   const typeResult = validateDoc(unknownType);
   assert.equal(typeResult.ok, false);
   assert.ok(typeResult.errors.some((item) => item.code === 'TYPE_UNKNOWN'));
-  const unknownCapability = fixture();
-  unknownCapability.entities[0].capabilities = { teleport: {} };
-  const capabilityResult = validateDoc(unknownCapability);
-  assert.equal(capabilityResult.ok, false);
-  assert.ok(capabilityResult.errors.some((item) => item.code === 'CAPABILITY_UNKNOWN'));
+
+  // 把「阻挡」写到物品上：这是类别边界，必须被挡住。
+  const crossSlot = structuredClone(levels.find((level) => level.id === 'the-axe'));
+  crossSlot.entities.find((entity) => entity.id === 'axe').blocks = { inState: 'idle' };
+  const slotResult = validateDoc(crossSlot);
+  assert.equal(slotResult.ok, false);
+  assert.ok(slotResult.errors.some((item) => item.code === 'SLOT_UNKNOWN'));
+
+  // 完全不认识的字段。
+  const unknownField = fixture();
+  unknownField.entities[0].teleport = {};
+  const fieldResult = validateDoc(unknownField);
+  assert.equal(fieldResult.ok, false);
+  assert.ok(fieldResult.errors.some((item) => item.code === 'SCHEMA_INVALID' && item.path.endsWith('.teleport')));
+});
+
+test('the wiring table refuses if: conditions live in declarations', () => {
+  const level = fixture();
+  level.rules[0].if = [{ entity: 'lever', state: 'off' }];
+  const result = validateDoc(level);
+  assert.equal(result.ok, false);
+  const error = result.errors.find((item) => item.path.endsWith('.if'));
+  assert.equal(error.code, 'SCHEMA_INVALID');
+  assert.match(error.message, /reacts.from/);
 });
 
 test('requirements and support matrices are matched per type version', () => {
@@ -77,23 +106,25 @@ test('requirements and support matrices are matched per type version', () => {
   assert.deepEqual(coverage.gaps, [{ layer: 'type', name: 'bridge', required: 2, supported: [1] }]);
 });
 
-test('platform support multiplies interpreters, type data and capability implementations', () => {
+test('platform support multiplies interpreters, type data and slot implementations', () => {
   const supports = platformSupports([{ supports: { schema: [1] } }, { supports: { schema: [1, 2] } }]);
   assert.deepEqual(supports.schema, [1, 2]);
   assert.deepEqual(supports.types.axe, [1]);
-  assert.deepEqual(supports.capabilities.holdable, [1]);
+  assert.deepEqual(supports.capabilities.carryable, [1]);
   assert.equal(supports.types.wand, undefined, '数据里没有的类型就不是「能跑」的类型');
 });
 
-test('compileModel derives traits and normalizes width', () => {
+test('compileModel merges declarations and normalizes width', () => {
   const model = compileModel(fixture());
   assert.equal(model.compiled, true);
   const bridge = model.entities.find((entity) => entity.id === 'bridge');
-  assert.equal(bridge.traits.groundInState, 'extended');
+  assert.equal(bridge.ground.inState, 'extended');
   assert.equal(bridge.width, 180);
   const lever = model.entities.find((entity) => entity.id === 'lever');
   assert.equal(lever.width, 28);
-  assert.equal(lever.traits.clickable, true);
+  assert.equal(lever.reacts.from, 'off');
+  assert.equal(lever.reacts.actions[0].state, 'on');
+  assert.equal(lever.traits, undefined, '编译后只剩数据，不再派生 traits');
 });
 
 test('diff reports added, removed and changed items by id', () => {

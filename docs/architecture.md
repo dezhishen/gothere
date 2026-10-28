@@ -29,7 +29,7 @@ L2 features     editor（编辑 UI） · render（渲染策略） · dsl（文�
    │            只依赖 L2 app 与 L0 contract；gen 额外可用 kernel 自检
 L1 app          用例层：load / validate / applyOps / simulate / diff / export / share / seed / skills
    │            唯一写入路径；无 DOM、无 node:*、无网络
-L1 kernel       确定性模拟：60 tick、能力 hook 调度、预算、快照、回放
+L1 kernel       确定性模拟：60 tick、固定阶段解释元素声明、预算、快照、回放
    │            只依赖 contract
 L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 · 迁移表 · PRNG · 常量 · diff
                 纯数据与纯函数，不认识任何上层
@@ -57,7 +57,7 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 
 | 模块 | 职责 | 冻结导出 | 说明 |
 |---|---|---|---|
-| `registry.js` | 类型/能力/字段/事件/令牌的单点声明 | `REGISTRY`、`CAPABILITIES`、`TOKENS`、`describe(kind)`、`presets()` | 新增类型或能力只改这里（设计 [C6](design.md#c6)） |
+| `registry.js` | 按类别聚合 schema、合并实体的声明槽 | `SLOTS`、`slotsOfEntity(e)`、`fieldsOfCategory(c)`、`describe(kind)` | 类别 schema 由工厂拥有，这里只做聚合（设计 [C6](design.md#c6)） |
 | `versions.js` | 版本与支持矩阵 | `SUPPORTED`、`INTERPRETERS`、`resolveInterpreter(doc)` | 一个解释器覆盖某些类型的某些版本（[C12](design.md#c12)） |
 | `validate.js` | 四层校验 | `validateDoc(doc, { mode })` → `{ ok, errors[] }` | `mode: 'editable' \| 'playable'`（[C3](design.md#c3)） |
 | `migrate.js` | 迁移表 | `migrate(doc, { target })` → `{ doc, applied[] }` | 表驱动；无表则直通或明确拒绝 |
@@ -71,9 +71,9 @@ L0 contract     IR 类型 · 注册表 · 版本与支持矩阵 · 四层校验 
 
 | 模块 | 职责 | 冻结导出 |
 |---|---|---|
-| `engine.js` | 固定步长推进、能力 hook 调度、预算、失败归因 | `createSimulation(doc)`、`TICKS_PER_SECOND` |
+| `engine.js` | 固定步长推进、按阶段解释元素声明、预算、失败归因 | `createSimulation(doc)`、`STAGES`、`TICKS_PER_SECOND` |
 | `replay.js` | 用输入序列重推 | `replay(doc, recording)` → `{ state, ok, code? }` |
-| `hooks.js` | 能力 hook 的固定执行顺序 | `HOOK_ORDER`、`runHooks(capability, phase, ctx)` |
+| `actor.js` / `item.js` | 角色视图与物品卡：元素能读到的唯一「人身上有什么」 | `createActorView(state)`、`itemCard(e)`、`matchesNeed(card, need)` |
 
 约束：`engine` 只读 contract 的注册表与常量；`snapshot()` 必须深拷贝；失败返回稳定 `reason`，对外错误码由 `app/errors.js` 映射。
 
@@ -297,7 +297,7 @@ docs/design.md docs/architecture.md docs/content-model.md
 | 拆分 `schema.js` 引入语义漂移 | 关卡解法回归失败 | M1 完成后先跑 golden 快照对比，再改内核 |
 | `applyOps` 迁移不全 | 出现两套写入路径 | `check-layers` 扫描 `editor` 直接赋值；迁移期内网开一面但记入豁免清单，M3 末清空 |
 | 内置关卡转 JSON 破坏离线包 | 单文件打不开 | 构建后断言 `<script type="application/json">` 存在且 JSON 可解析 |
-| 能力 hook 顺序变化 | 回放不一致 | `HOOK_ORDER` 冻结 + golden 回放 |
+| 固定阶段顺序变化 | 回放不一致 | `STAGES` 冻结 + golden 回放 |
 | 主题覆盖污染默认样式 | 视觉回归漂移 | 只允许令牌值 + 视觉回归 0 差异 |
 | CLI 输出混入日志 | Agent 解析失败 | `tests/cli.test.mjs` 断言 stdout 纯 JSON |
 | 里程碑过大 | 无法独立回滚 | 每个 M 单独 PR，退出条件不满足不合入 |

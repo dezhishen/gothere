@@ -1,22 +1,23 @@
-// 确定性内核：固定 60 tick 推进、相位顺序固定、预算超限即失败、快照深拷贝。
-// 角色脚底高度由「地形（地面段 + 楼梯）+ 动态地面（桥、电梯轿厢）」决定；
-// 只读已编译模型，按「实体声明顺序 → 能力声明顺序」调度 hook，不认识任何具体能力。
+// 确定性内核：固定 60 tick 推进、阶段顺序固定、预算超限即失败、快照深拷贝。
+// 内核只做一件事：按固定阶段**解释元素自己声明的东西**。
+// 元素里没有代码，所以没有任何人能改流程；要改流程只能改这里。
 
-import { getCapability } from '../capabilities/index.js';
+import { createActorView } from '../contract/actor.js';
 import { compileModel } from '../contract/compile.js';
 import { LIMITS, MESSAGES, TICKS_PER_SECOND } from '../contract/constants.js';
+import { itemCard } from '../contract/item.js';
 import { stateLabel } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
 
 const clone = (value) => structuredClone(value);
+const quantize = (value) => Math.round(value * 1e6) / 1e6;
+const sameFloor = (entity, state) => Math.abs(entity.y - state.actor.y) <= LIMITS.floorTolerance;
 
 /**
- * 相位顺序即语义：实体移动 → 角色行走/支撑 → 接触（区域 / 拾取 / 伤害 / 乘梯）→ 阻挡 → 终点。
- * 新增相位必须改这张表，并补一条 golden 回放回归。
+ * 阶段顺序即语义：输入 → 自走 → 携带同步 → 接触（反应/伤害/载人）→ 阻挡 → 终点。
+ * 新增阶段必须改这张表，并补一条 golden 回放回归。
  */
-export const HOOK_PHASES = Object.freeze(['onMotion', 'onContact', 'onBlock']);
-
-const quantize = (value) => Math.round(value * 1e6) / 1e6;
+export const STAGES = Object.freeze(['input', 'motion', 'carry', 'contact', 'block']);
 
 /** 未编译的输入一律先走 playable 全量校验，模型则直接运行。 */
 function modelOf(input) {
@@ -33,11 +34,10 @@ function modelOf(input) {
 
 /** 实体能提供的地面高度：桥铺好时的自身高度，或电梯轿厢当前所在楼层。 */
 function groundOf(entity) {
-  const traits = entity.traits;
-  if (traits.groundInState !== undefined && entity.state === traits.groundInState) return entity.y;
-  if (traits.rideUpperState !== undefined) {
-    return entity.state === traits.rideUpperState ? traits.rideUpperY : traits.rideLowerY;
-  }
+  const ground = entity.ground;
+  if (ground && ground.inState !== null && entity.state === ground.inState) return entity.y;
+  const lifts = entity.lifts;
+  if (lifts) return entity.state === lifts.upperState ? lifts.upperY : lifts.lowerY;
   return null;
 }
 
@@ -73,6 +73,14 @@ export function createSimulation(input) {
     return api;
   };
 
+  /** 唯一的写入点：元素自己变状态。元素不能改别人。 */
+  const transition = (entity, target) => {
+    if (typeof target !== 'string' || entity.state === target) return false;
+    entity.state = target;
+    emit(entity.label + ' → ' + stateLabel(target));
+    return true;
+  };
+
   const runActions = (list) => {
     for (const action of list) {
       if (state.status !== 'running') return;
@@ -83,10 +91,7 @@ export function createSimulation(input) {
       actionBudget -= 1;
       if (action.type === 'set') {
         const entity = state.entities[action.target];
-        if (entity && entity.state !== action.state) {
-          entity.state = action.state;
-          emit(entity.label + ' → ' + stateLabel(entity.state));
-        }
+        if (entity) transition(entity, action.state);
       } else {
         state.timers.push({ due: state.tick + action.ticks, order: serial, actions: clone(action.actions) });
         serial += 1;
@@ -94,17 +99,42 @@ export function createSimulation(input) {
     }
   };
 
-  // 每条规则都能看到前面规则的结果：顺序即语义。
+  // 连线表：事件 → 动作。没有条件——条件住在元素自己的声明里。
   const trigger = (type, source) => {
     for (const rule of model.rules) {
       if (state.status !== 'running') return;
-      if (rule.on.type !== type || rule.on.source !== source) continue;
-      const conditionsMet = (rule.if ?? []).every((condition) => {
-        const entity = state.entities[condition.entity];
-        return Boolean(entity) && entity.state === condition.state;
-      });
-      if (conditionsMet) runActions(rule.actions);
+      if (!rule.on || rule.on.type !== type || rule.on.source !== source) continue;
+      runActions(rule.actions);
     }
+  };
+
+  /**
+   * 解释一次「反应」声明：状态前置 → 需求（物品标签）→ 动作（变成什么 / 发布什么）。
+   * 需求不满足时只说一次话，不改变任何状态。
+   */
+  const applyReact = (entity, reacts) => {
+    if (reacts.from !== null && entity.state !== reacts.from) return false;
+    if (reacts.need) {
+      const actor = createActorView(state);
+      const check = actor.can(reacts.need);
+      if (!check.ok) {
+        if (!entity.noticed) {
+          entity.noticed = true;
+          emit((reacts.unmet && reacts.unmet.message) || MESSAGES.need, 'notice');
+        }
+        return false;
+      }
+      if (reacts.consume) {
+        const taken = actor.take(reacts.need);
+        if (taken) emit('用掉了' + taken.label);
+      }
+    }
+    for (const action of reacts.actions ?? []) {
+      if (state.status !== 'running') return true;
+      if (action.type === 'become') transition(entity, action.state);
+      else if (action.type === 'publish') trigger(action.event, entity.id);
+    }
+    return true;
   };
 
   /** 某个 x 上所有可站的表面高度。 */
@@ -137,16 +167,116 @@ export function createSimulation(input) {
     return entity ? groundOf(entity) : null;
   };
 
-  const runPhase = (phase, ctx) => {
+  /** ② 输入：元素声明了 reacts.on=input 才会被听见；听懂之后才发 click 给连线表。 */
+  const runInput = () => {
+    for (const source of pending) {
+      if (state.status !== 'running') break;
+      const entity = state.entities[source];
+      if (!entity) continue;
+      state.clicks += 1;
+      inputs.push({ tick: state.tick, source });
+      const reacts = entity.reacts;
+      if (!reacts || reacts.on !== 'input') continue;
+      if (applyReact(entity, reacts)) trigger('click', source);
+    }
+    pending = [];
+  };
+
+  /** ③ 自走：moves.inState 状态下的来回移动；被人拿着时不动。 */
+  const runMotion = () => {
     for (const entity of Object.values(state.entities)) {
       if (state.status !== 'running') return;
-      for (const [name, params] of Object.entries(entity.capabilities)) {
-        const capability = getCapability(name);
-        const hook = capability && capability.hooks ? capability.hooks[phase] : null;
-        if (typeof hook !== 'function') continue;
-        hook(ctx, entity, params);
+      const moves = entity.moves;
+      if (!moves || moves.inState === null || entity.state !== moves.inState) continue;
+      if (state.actor.holding === entity.id) continue;
+      const [min, max] = moves.between ?? [0, 0];
+      const step = (moves.speed ?? 0) / TICKS_PER_SECOND;
+      let direction = entity.moveDirection === -1 ? -1 : 1;
+      let next = entity.x + direction * step;
+      if (next >= max) { next = max; direction = -1; }
+      else if (next <= min) { next = min; direction = 1; }
+      entity.x = quantize(next);
+      entity.moveDirection = direction;
+    }
+  };
+
+  /** ④ 携带同步：拿起 / 跟随 / 放下。全部由 carryable 声明驱动。 */
+  const runCarry = (from, to) => {
+    for (const entity of Object.values(state.entities)) {
+      if (state.status !== 'running') return;
+      const carryable = entity.carryable;
+      if (!carryable) continue;
+      const follow = () => {
+        const max = model.world.width - entity.width;
+        entity.x = Math.max(0, Math.min(max, state.actor.x + (carryable.offset ?? 46)));
+        entity.y = state.actor.y;
+      };
+      if (entity.state === carryable.to) {
+        if (state.actor.holding === entity.id) follow();
+        continue;
+      }
+      if (entity.state !== carryable.from) continue;
+      if (state.actor.holding === entity.id) {
+        // 被连线表改回初始状态：放下，并挪到身后，而不是留在脚底。
+        state.actor.holding = null;
+        const max = model.world.width - entity.width;
+        entity.x = Math.max(0, Math.min(max, state.actor.x + (carryable.drop ?? -60)));
+        emit('放下了' + entity.label);
+        continue;
+      }
+      if (state.actor.holding) continue;
+      if (!sameFloor(entity, state)) continue;
+      if (!(to + 10 >= entity.x && from - 10 <= entity.x + entity.width)) continue;
+      entity.state = carryable.to;
+      state.actor.holding = entity.id;
+      follow();
+      emit('拿起了' + entity.label);
+    }
+  };
+
+  /** ⑤ 接触：反应（含需求）、伤害、载人。 */
+  const runContact = (from, to) => {
+    for (const entity of Object.values(state.entities)) {
+      if (state.status !== 'running') return;
+      const floor = sameFloor(entity, state);
+      const overlaps = (margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
+      const reacts = entity.reacts;
+      if (reacts && reacts.on === 'contact' && floor && overlaps()) {
+        applyReact(entity, reacts);
         if (state.status !== 'running') return;
       }
+      const harms = entity.harms;
+      if (harms && harms.inState !== null && entity.state === harms.inState && floor && overlaps(10)) {
+        const exempt = harms.unlessHeld !== false && state.actor.holding === entity.id;
+        if (!exempt) lose(harms.reason ?? 'hurt', harms.message || MESSAGES.hurt);
+        if (state.status !== 'running') return;
+      }
+      const lifts = entity.lifts;
+      if (lifts) {
+        const wasRiding = state.actor.riding === entity.id;
+        if (!overlaps()) {
+          if (wasRiding) state.actor.riding = null;
+          continue;
+        }
+        const carY = entity.state === lifts.upperState ? lifts.upperY : lifts.lowerY;
+        const onLevel = Math.abs(state.actor.y - carY) <= (lifts.tolerance ?? LIMITS.floorTolerance);
+        if (!onLevel && !wasRiding) continue;
+        state.actor.riding = entity.id;
+        if (!wasRiding && onLevel) emit('乘上了' + entity.label);
+        state.actor.y = carY;
+      }
+    }
+  };
+
+  /** ⑥ 阻挡：blocks.inState 状态下的去路。 */
+  const runBlock = (from, to) => {
+    for (const entity of Object.values(state.entities)) {
+      if (state.status !== 'running') return;
+      const blocks = entity.blocks;
+      if (!blocks || blocks.inState === null || entity.state !== blocks.inState) continue;
+      if (!sameFloor(entity, state)) continue;
+      if (!(to + 10 >= entity.x && from - 10 <= entity.x + entity.width)) continue;
+      lose(blocks.reason ?? 'gate', blocks.message || MESSAGES.gate);
     }
   };
 
@@ -162,19 +292,12 @@ export function createSimulation(input) {
     for (const timer of due) runActions(timer.actions);
     if (state.status !== 'running') { pending = []; return; }
 
-    // ② 玩家输入只入队，按声明顺序执行
-    for (const source of pending) {
-      if (state.status !== 'running') break;
-      state.clicks += 1;
-      inputs.push({ tick: state.tick, source });
-      trigger('click', source);
-    }
-    pending = [];
+    // ② 输入（元素自己决定听不听、听懂之后发什么事件）
+    runInput();
     if (state.status !== 'running') return;
 
-    // ③ 实体自己先动：巡逻、移动平台之类，交给 onMotion 相位。
-    const motionCtx = { state, world: model.world, tickRate: TICKS_PER_SECOND, emit, lose, trigger };
-    runPhase('onMotion', motionCtx);
+    // ③ 自走
+    runMotion();
     if (state.status !== 'running') return;
 
     // ④ 行走与脚底高度：整段都要有地面（两端 + 中点采样，避免窄缝被跳过）
@@ -193,20 +316,19 @@ export function createSimulation(input) {
     state.actor.x = to;
     state.actor.y = surfaceY;
 
-    // 所有能力共用同一套「触及 / 同层」定义。
-    const overlaps = (entity, margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
-    const atFloor = (entity) => Math.abs(entity.y - state.actor.y) <= LIMITS.floorTolerance;
-    const ctx = { state, world: model.world, from, to, overlaps, atFloor, tickRate: TICKS_PER_SECOND, emit, lose, trigger };
-
-    // ⑤ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害、乘梯
-    runPhase('onContact', ctx);
+    // ⑤ 携带同步
+    runCarry(from, to);
     if (state.status !== 'running') return;
 
-    // ⑥ 阻挡类能力
-    runPhase('onBlock', ctx);
+    // ⑥ 接触
+    runContact(from, to);
     if (state.status !== 'running') return;
 
-    // ⑦ 终点与超时
+    // ⑦ 阻挡
+    runBlock(from, to);
+    if (state.status !== 'running') return;
+
+    // ⑧ 终点与超时
     if (to >= model.goal.x && Math.abs(state.actor.y - model.goal.y) <= LIMITS.floorTolerance) {
       state.status = 'won';
       emit(MESSAGES.won, 'won');
@@ -221,7 +343,8 @@ export function createSimulation(input) {
     click(source) {
       if (state.status !== 'running' || pending.length >= LIMITS.maxClicksPerTick) return false;
       const entity = state.entities[source];
-      if (!entity || !entity.traits.clickable) return false;
+      const reacts = entity ? entity.reacts : null;
+      if (!reacts || reacts.on !== 'input') return false;
       pending.push(source);
       return true;
     },
@@ -241,7 +364,15 @@ export function createSimulation(input) {
       return api;
     },
     reset,
-    snapshot: () => clone(state),
+    snapshot: () => {
+      const copy = clone(state);
+      const held = state.actor.holding ? state.entities[state.actor.holding] : null;
+      const card = held ? itemCard(held) : null;
+      copy.actor.held = card;
+      copy.actor.tags = held ? [...held.tags] : [];
+      copy.actor.inventory = card ? [card] : [];
+      return copy;
+    },
     recording: () => ({ schemaVersion: model.schemaVersion, levelId: model.id, inputs: clone(inputs), untilTick: state.tick, status: state.status }),
   };
 

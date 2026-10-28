@@ -119,6 +119,12 @@ export function createMapFactory() {
   return createFactory({
     category: 'map',
     version: 1,
+    schema: {
+      label: '地图',
+      // 地图不产出实体：这些是关卡文档里地图自己那一段的字段。
+      slots: [],
+      sections: ['world', 'actor', 'goal', 'platforms', 'stairs'],
+    },
     parseSection: parseMapSection,
     terrain: mapTerrain,
   });

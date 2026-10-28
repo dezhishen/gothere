@@ -24,12 +24,13 @@ test('factories never call each other: interactions are declared as data', () =>
   const level = axeLevel();
   const hammer = level.entities.find((entity) => entity.id === 'hammer');
   const rule = level.rules.find((item) => item.id === 'hammer-opens');
-  // 事件来自物品工厂（hammer 的 clickable），状态来自机关工厂（gate 的 open）
+  // 事件来自物品自己（hammer 的 reacts.on=input），状态来自机关工厂（gate 的 open）
   assert.equal(factoryFor(hammer.kind).category, 'item');
   assert.equal(factoryFor(rule.actions[0].target).category, 'mechanism');
   assert.ok(eventsOfEntity(hammer).includes('click'));
   assert.ok(typeDescriptor('gate').states.some((state) => state.id === 'open'));
-  assert.deepEqual(rule.if, [{ entity: 'hammer', state: 'held' }]);
+  assert.equal(rule.if, undefined, '连线表里没有条件');
+  assert.equal(typeDescriptor('hammer').slots.reacts.from, 'held', '「只有拿着才算」写在物品自己的声明里');
 });
 
 test('an item can drive a mechanism through a rule', () => {
@@ -44,7 +45,6 @@ test('a mechanism can drive an item through a rule', () => {
   level.rules.push({
     id: 'plate-drops-axe',
     on: { type: 'enter', source: 'plate' },
-    if: [{ entity: 'axe', state: 'held' }],
     actions: [{ type: 'set', target: 'axe', state: 'idle' }],
   });
   assert.equal(validateDoc(level).ok, true);
@@ -68,7 +68,7 @@ test('cross-category actions are validated against the target factory', () => {
 test('physical interaction happens in shared phases, not inside a factory', () => {
   const level = axeLevel();
   const axe = level.entities.find((entity) => entity.id === 'axe');
-  axe.capabilities = { holdable: false, clickable: {} };
+  axe.carryable = false;
   axe.x = 940;
   const state = play(level);
   assert.equal(state.status, 'lost');

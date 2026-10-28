@@ -1,4 +1,4 @@
-import { eventsOfEntity, stateLabel, typeDescriptor } from './core/contract/registry.js';
+import { acceptsInput, stateLabel, typeDescriptor } from './core/contract/registry.js';
 import { validateLevel } from './core/contract/validate.js';
 import { createGame, describePlatform, parseBundle, replayLevel } from './core/interpreters/index.js';
 import { createDocSource, createTextSource } from './app/levelSource.js';
@@ -47,7 +47,7 @@ function loadLevel(next, index = -1) {
   $('hint-text').hidden = true; $('hint').setAttribute('aria-expanded', 'false');
   $('hint').textContent = '需要一点提示？ ↗';
   $('hotspots').replaceChildren(); $('mechanism-actions').replaceChildren(); mechanismButtons.clear();
-  level.entities.filter((e) => eventsOfEntity(e).includes('click')).forEach((entity, index) => {
+  level.entities.filter((e) => acceptsInput(e)).forEach((entity, index) => {
     const hotspot = document.createElement('button');
     hotspot.className = 'hotspot'; hotspot.dataset.entity = entity.id;
     hotspot.setAttribute('aria-label', '操作：' + entity.label);

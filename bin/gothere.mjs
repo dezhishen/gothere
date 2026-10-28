@@ -20,9 +20,9 @@ process.stdout.on('error', (error) => { if (error.code === 'EPIPE') process.exit
 const USAGE = `gothere — 一定要到达那里的创作侧 CLI
 
 用法：
-  gothere skills [--json]                              能力清单 + 平台支持矩阵
-  gothere platform [--json]                            解释器清单与支持的 schema / 类型 / 能力
-  gothere schema [describe] [类型] [--json]             类型、能力、字段、状态、事件
+  gothere skills [--json]                              声明槽清单 + 平台支持矩阵
+  gothere platform [--json]                            解释器清单与支持的 schema / 类型 / 声明槽
+  gothere schema [describe] [类型] [--json]             类别 schema、声明槽、字段、状态、事件
   gothere level list [--json]                          内置关卡清单
   gothere level get <id|文件> [--json]                 取一份关卡文档
   gothere level validate <id|文件> [--mode editable|playable] [--json]
@@ -126,7 +126,7 @@ function renderSkills(result) {
   lines.push('解释器：' + (platform.interpreters ?? []).map((item) => item.id + ' v' + item.version + '（' + item.kind + '）').join('、'));
   lines.push('支持 schema：' + (platform.supports?.schema ?? []).join(', '));
   lines.push('支持类型：' + Object.entries(platform.supports?.types ?? {}).map(([kind, versions]) => kind + '@' + versions.join('/')).join(' · '));
-  lines.push('支持能力：' + Object.entries(platform.supports?.capabilities ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · '));
+  lines.push('支持声明槽：' + Object.entries(platform.supports?.capabilities ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · '));
   return lines.join('\n');
 }
 
@@ -149,32 +149,38 @@ function renderPlatform(result) {
   const factories = data.factories ?? [];
   if (factories.length) {
     lines.push('');
-    lines.push('内容工厂');
+    lines.push('内容工厂（每类自带 schema）');
     for (const factory of factories) {
       lines.push('  ' + factory.category + ' (v' + factory.version + ') · 类型 ' + (factory.kinds.length ? factory.kinds.join(', ') : '（无实体）'));
+      lines.push('    实体字段：' + (factory.fields ?? []).join('、'));
     }
   }
   lines.push('');
   lines.push('平台支持类型：' + table(data.supports?.types));
-  lines.push('平台支持能力：' + table(data.supports?.capabilities));
+  lines.push('平台支持声明槽：' + table(data.supports?.capabilities));
   return lines.join('\n');
 }
 
 function renderSchema(result) {
   const data = result.data ?? {};
-  if (Array.isArray(data.types)) {
-    const lines = ['类型 ' + data.types.length + ' 个 · 能力 ' + (data.capabilities ?? []).length + ' 个'];
-    for (const type of data.types) {
-      lines.push('  ' + pad(type.id, 10) + pad(type.category ?? '-', 10) + 'v' + type.version + '  状态 ' + type.states.join('/') + (type.events.length ? '  事件 ' + type.events.join('/') : ''));
+  if (Array.isArray(data.categories)) {
+    const lines = ['类别 ' + data.categories.length + ' 个 · 声明槽 ' + (data.slots ?? []).length + ' 个'];
+    for (const category of data.categories) {
+      lines.push('  ' + pad(category.category, 10) + 'v' + category.version + '  ' + category.label);
+      lines.push('    类型：' + (category.kinds.length ? category.kinds.join('、') : '（无实体）'));
+      lines.push('    字段：' + category.fields.join('、'));
+      lines.push('    声明槽：' + (category.slots.length ? category.slots.join('、') : '（无）'));
     }
-    lines.push('能力：' + (data.capabilities ?? []).map((item) => item.id + ' v' + item.version).join('、'));
+    lines.push('声明槽词汇：' + (data.slots ?? []).map((item) => item.id + ' v' + item.version + ' → ' + item.stages.join('/')).join('、'));
     return lines.join('\n');
   }
   const lines = [data.id + ' v' + data.version + ' · 类别 ' + data.category + ' · 默认宽度 ' + data.defaultWidth];
   lines.push('状态：' + data.states.map((item) => item.id + '（' + item.label + '）').join('、'));
+  if (data.tags && data.tags.length) lines.push('标签：' + data.tags.join('、'));
+  if (data.consumedState) lines.push('被用掉后：' + data.consumedState + (data.hiddenStates.length ? '（不绘制：' + data.hiddenStates.join('、') + '）' : ''));
   lines.push('事件：' + (data.events.length ? data.events.join('、') : '无'));
-  lines.push('能力：' + data.capabilities.map((item) => item.name + ' v' + item.version + ' ' + JSON.stringify(item.params)).join('、'));
-  lines.push('字段：' + data.fields.map((field) => field.key + (field.optional ? '?' : '')).join('、'));
+  lines.push('声明：' + data.slots.map((item) => item.name + ' v' + item.version + ' ' + JSON.stringify(item.params)).join('、'));
+  lines.push('字段：' + data.fields.join('、'));
   return lines.join('\n');
 }
 

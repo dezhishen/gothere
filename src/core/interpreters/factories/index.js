@@ -1,43 +1,41 @@
-// 内容工厂注册表：类别是**固定的三种**（地图 / 机关 / 物品）。
-// 注册只能落到已有类别上，并且必须实现该类别的工厂接口（factory.js 的 assertFactory）。
-// 工厂之间不互相调用；跨类别交互走规则、内核相位与 traits 三条通道。
+// 内容工厂注册表：类别固定三种（map / mechanism / item），注册只能落到已有类别上。
+// 工厂之间不互相调用：跨类别交互只走关卡的连线表与内核的固定阶段。
 
-import { CATEGORIES, assertFactory } from './factory.js';
+import { assertFactory, CATEGORIES } from './factory.js';
 import { createItemFactory } from './item.js';
 import { createMapFactory } from './map.js';
 import { createMechanismFactory } from './mechanism.js';
 
-const factories = new Map();
+const registry = new Map();
 
 export function registerFactory(factory) {
   assertFactory(factory);
-  if (factories.has(factory.category)) throw new Error('类别 ' + factory.category + ' 的工厂已注册。');
-  factories.set(factory.category, factory);
+  if (registry.has(factory.category)) throw new Error('工厂 ' + factory.category + ' 已注册。');
+  registry.set(factory.category, factory);
   return factory;
 }
 
 export function unregisterFactory(category) {
-  return factories.delete(category);
+  return registry.delete(category);
 }
 
 export function getFactory(category) {
-  return factories.get(category) ?? null;
+  return registry.get(category) ?? null;
 }
 
-/** 固定顺序遍历，保证类型清单与错误顺序可复现。 */
 export function listFactories() {
-  return CATEGORIES.map((category) => factories.get(category)).filter(Boolean);
+  return [...registry.values()];
 }
 
-/** 一个实体类型归哪个工厂管；没有工厂认领就是未知类型。 */
+/** 按类别顺序找工厂：类型名 → 它属于哪一类。 */
 export function factoryFor(kind) {
-  for (const factory of listFactories()) {
-    if (factory.has(kind)) return factory;
+  for (const category of CATEGORIES) {
+    const factory = registry.get(category);
+    if (factory && factory.has(kind)) return factory;
   }
   return null;
 }
 
-/** 抽象工厂的核心动作：按类型取产品（类型描述符）。 */
 export function createType(kind) {
   const factory = factoryFor(kind);
   return factory ? factory.create(kind) : null;
@@ -47,9 +45,9 @@ export function listTypeDescriptors() {
   return listFactories().flatMap((factory) => factory.list());
 }
 
-/** 平台编译进哪些内容工厂，就由这份清单决定。 */
+/** 恢复默认注册表：平台编译进哪些类别，就由这份清单决定。 */
 export function resetFactories() {
-  factories.clear();
+  registry.clear();
   registerFactory(createMapFactory());
   registerFactory(createMechanismFactory());
   registerFactory(createItemFactory());

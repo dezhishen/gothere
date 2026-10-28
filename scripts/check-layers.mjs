@@ -59,7 +59,7 @@ export async function checkLayers() {
       const specifier = match[1];
       const leaf = from.split(sep).join('/');
       if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.js') {
-        violations.push({ file: from, target: specifier, reason: '能力实现必须是叶子模块，不能 import 任何东西。' });
+        violations.push({ file: from, target: specifier, reason: '声明槽必须是叶子模块，不能 import 任何东西。' });
         continue;
       }
       if (leaf.startsWith('core/interpreters/factories/')) {
@@ -71,6 +71,10 @@ export async function checkLayers() {
         continue;
       }
       record(from, layer, isCore, specifier, violations, file);
+    }
+    const leaf = from.split(sep).join('/');
+    if (leaf.startsWith('core/capabilities/') && leaf !== 'core/capabilities/index.js' && /(\bfunction\b|=>)/.test(source)) {
+      violations.push({ file: from, target: '行为代码', reason: '元素只能声明自己：声明槽里不允许出现函数。' });
     }
     if (isCore && /\b(document|window)\s*\./.test(source)) {
       violations.push({ file: from, target: 'DOM', reason: 'core 不允许引用 DOM 全局。' });

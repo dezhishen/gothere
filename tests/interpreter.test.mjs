@@ -46,7 +46,7 @@ test('the platform ships one interpreter per data kind', () => {
   assert.deepEqual(level.supports, { schema: [1] });
   assert.equal(level.supports.types, undefined, '关卡解释器不拥有类型');
   assert.deepEqual(platform.supports.types.axe, [1]);
-  assert.deepEqual(platform.supports.capabilities.holdable, [1]);
+  assert.deepEqual(platform.supports.capabilities.carryable, [1]);
 });
 
 test('level resolution is deterministic: higher version first, then id ascending', () => {
@@ -114,7 +114,7 @@ test('parse compiles a model and the level interpreter can run and replay it', (
   assert.equal(parsed.interpreter.id, 'level-1');
   assert.equal(parsed.requirements.schema, 1);
   const bridge = parsed.model.entities.find((entity) => entity.id === 'bridge');
-  assert.equal(bridge.traits.groundInState, 'extended');
+  assert.equal(bridge.ground.inState, 'extended');
 
   const game = createGame(level);
   game.start();

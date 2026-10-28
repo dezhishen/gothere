@@ -2,7 +2,7 @@
 
 一个轻松诙谐、以关卡数据驱动的 2D 环境解谜原型。主角是一个认准目的地就往前走的倔家伙；点击场景中的编号机关，或下方同名按钮，帮助他越过麻烦、到达目的地。
 
-最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成六关可玩原型、JSON 规则、可注册的文档解释器与能力实现、多层地图、巡逻与碾压类机关、确定性回放和手机浏览器试玩。
+最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成六关可玩原型、按类别划分的解释器与 schema、纯声明的元素（物品只说自己是什么、机关只说自己在什么状态下做什么）、多层地图、巡逻与碾压类机关、确定性回放和手机浏览器试玩。
 
 ![游戏原型：旅行者、伸缩木桥和目的地旗帜](docs/images/gameplay.png)
 
@@ -24,12 +24,18 @@ pnpm dev
 ## 给 AI Agent 的创作侧 CLI
 
 平台把「解析器（interpreter）」和「运行」分开：每个解释器声明自己支持的 schema、
-类型与能力版本，平台按文档的版本要求选一个解释器来解析并运行；内容只贡献 JSON。
+类型与声明版本，平台按文档的版本要求选一个解释器来解析并运行；内容只贡献 JSON。
+
+三类内容各有自己的 schema：`map`（世界 / 角色 / 终点 / 地面 / 楼梯）、`mechanism`
+（反应 `reacts`、阻挡 `blocks`、伤害 `harms`、自走 `moves`、提供地面 `ground`、载人
+`lifts`）、`item`（标签 `tags`、可携带 `carryable`、伤害 `harms`、反应 `reacts`）。
+写错类别（比如给物品写 `blocks`）会在加载前被拒绝。
 
 ```sh
-pnpm cli skills --json                  # 能力清单 + 解释器支持矩阵
+pnpm cli skills --json                  # 技能清单 + 解释器支持矩阵
 pnpm cli platform                       # 解释器与平台整体支持集
-pnpm cli schema bridge                  # 某类型的字段、状态、事件、能力
+pnpm cli schema bridge                  # 某类型的字段、状态、声明
+pnpm cli schema                         # 三个类别的 schema 与声明槽词汇
 pnpm cli level list
 pnpm cli level validate demo.level.json --mode playable --json
 pnpm cli level simulate first-bridge --inputs '[{"tick":1,"source":"lever"}]' --json
@@ -110,8 +116,9 @@ pnpm build
 - `project.md`：项目愿景、架构与后续路线。
 - `docs/design.md` / `docs/architecture.md`：平台与内容的边界、模块分层与里程碑。
 - `src/core/contract/`：类型与字段注册表、版本与支持矩阵、四层校验、编译、diff、PRNG、迁移。
-- `src/core/capabilities/`：能力实现单元（单击、延长地面、阻挡、区域、可持有、接触伤害、
-  垂直乘坐、巡逻自走），每个能力自带 traits 与相位 hook，内核只按名字调度。
+- `src/core/capabilities/`：**声明槽词汇**（reacts / blocks / harms / carryable /
+  moves / ground / lifts），每个文件只导出参数模板与所属阶段，**不含任何函数**；
+  门禁会拦住想在元素里写行为代码的改动。
 - `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
 - `src/core/interpreters/`：两层注册表。数据制品解释器固定 4 种（`level` / `bundle` /
   `manifest` / `recording`）；内容抽象工厂固定 3 种（`factories/` 下的 `map` / `mechanism` /
@@ -122,9 +129,9 @@ pnpm build
 - `src/styles/app.css`：Tailwind CSS v4 入口。设计令牌放在 `@theme`，组件类用 `@apply` 组合工具类；构建输出到 `src/style.css`（生成物，不入库）。
 - `src/scene.js`：Canvas 场景与原创程序绘制角色；未知类型走占位回退。
 - `src/main.js`：界面、输入、固定步长驱动和关卡数据面板。
-- `tests/`：契约、能力、解释器、用例、CLI、内容与 HTTP 测试。
+- `tests/`：契约、声明槽、解释器、用例、CLI、内容与 HTTP 测试。
 - `scripts/build.mjs`：无第三方运行时依赖的单文件打包，构建期校验并内联关卡。
-- `scripts/check-layers.mjs`：分层门禁（依赖只向下、能力实现必须是叶子模块）。
+- `scripts/check-layers.mjs`：分层门禁（依赖只向下、声明槽必须是叶子模块且不含函数）。
 - `scripts/css.mjs`：调用 Tailwind CLI 编译样式；`scripts/dev.mjs` 同时跑样式监听与开发服务器。
 - `scripts/browser.mjs`：端到端脚本共用的 Chromium 选择逻辑。
 - `scripts/share.mjs`：只转发单文件游戏的临时 HTTPS 试玩。
@@ -133,11 +140,25 @@ pnpm build
 
 当前空间为 1200×640，地面高度 440；角色只向右自动行走，speed 单位为世界单位/秒。地面由水平区间组成，桥延伸时补足地面。渲染器可以完全替换。
 
-实体类型（预设）：机关族 switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、lift（lower/upper）、guard（patrolling/stopped）、crusher（active/parked）；物品族 axe、hammer 与 key（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。新增类型只能注册到已有的三个内容工厂（`map` / `mechanism` / `item`）里，实现该工厂的类型接口。
+实体类型（预设）：机关族 switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、lift（lower/upper）、guard（patrolling/stopped）、crusher（active/parked）；物品族 axe、hammer 与 key（idle/held/used，标签 `key`、`yellow`，被用掉后变成 `used` 且不再绘制）。类型只是「声明 + 外观」的数据，元素里没有代码：想给某个实例换配置就覆盖同名字段（`"blocks": false` 关掉一条声明），不需要新类型。
 
-规则含 `on: { type: "click" | "enter", source: "entity-id" }`，可选 `if: [{entity, state}]`，和 `actions`。click 只接受开关或危险物；enter 只接受压力板。动作支持 `{type:"set",target,state}` 和 `{type:"after",ticks,actions}`。未知能力、非法引用、重复 ID 和错误状态会在加载前拒绝。
+机关需要物品时，需求写在**自己**身上，读的是角色的物品卡：
 
-每个 tick：推进时钟 → 到期动作按 due/order 执行 → 点击按记录顺序执行 → onMotion（巡逻等自走实体移动）→ 角色前进 → onContact（压力板等区域首次接触）→ onBlock（门、危险物、碾压）→ 检查终点与超时。规则按声明顺序执行，后续规则可以观察前面规则的状态变化。延迟相对动作实际执行的 tick 计算；after 不支持取消，同一目标的到期写入按上述顺序依次生效。条件在规则触发时检查，延迟动作不重新判断条件。
+```json
+"reacts": {
+  "on": "contact",
+  "need": { "kind": "key", "tags": ["key", "yellow"] },
+  "consume": true,
+  "actions": [{ "type": "become", "state": "pressed" }, { "type": "publish", "event": "enter" }],
+  "unmet": { "reason": "locked", "message": "踏板下面有个锁眼，要一把黄钥匙。" }
+}
+```
+
+条件不满足时机关只提示一次、不改变任何状态；满足时物品会变成它自己声明的 `consumedState`。若某条需求的标签在关卡里无人提供，加载期就会报「没有任何元素提供」。
+
+规则是**纯连线表**：`on: { type: "click" | "enter", source: "entity-id" }` 加 `actions`，**没有 `if`**。条件只能出现在元素自己的声明里（`reacts.from` / `reacts.need` / `blocks.inState`），写 `if` 会在加载前被拒绝并提示改法。动作支持 `{type:"set",target,state}` 和 `{type:"after",ticks,actions}`。未知字段、跨类别的声明、非法引用、重复 ID 和错误状态都会在加载前拒绝。
+
+每个 tick 的固定阶段（元素无法改变这个顺序）：① 到期动作按 due/order → ② 输入（元素自己决定听不听，听懂才发事件给连线表）→ ③ 自走（`moves`）→ ④ 角色前进与脚底支撑 → ⑤ 携带同步（拿起 / 跟随 / 放下）→ ⑥ 接触（`reacts` / `harms` / `lifts`）→ ⑦ 阻挡（`blocks`）→ ⑧ 终点与超时。规则按声明顺序执行，后续规则可以观察前面规则的状态变化。延迟相对动作实际执行的 tick 计算；after 不支持取消，同一目标的到期写入按上述顺序依次生效。条件在规则触发时检查，延迟动作不重新判断条件。
 
 输入只在 running 状态接收，并在下一个 tick 处理。暂停不处理输入；单步可从 ready/paused 执行一个 tick。每局上限 36,000 tick；暂停、切关、重置和倍速均不改变模拟规则。这里的确定性面向同一份关卡数据和兼容的 JS 运行时，不是跨版本物理引擎的承诺。
 

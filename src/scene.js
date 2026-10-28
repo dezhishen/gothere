@@ -145,10 +145,10 @@ export function createRenderer(canvas) {
   }
   // 电梯：井道横跨两层，轿厢画在「当前楼层」（调用方已平移到该层）。
   function lift(e) {
-    const x=e.x,w=e.width,t=e.traits??{};
-    const carFloor=t.rideUpperState===undefined?440:(e.state===t.rideUpperState?t.rideUpperY:t.rideLowerY);
+    const x=e.x,w=e.width,t=e.lifts??{};
+    const carFloor=carFloorOf(e);
     const localY=(worldY)=>worldY-carFloor+440;
-    const upperY=t.rideUpperY??300,lowerY=t.rideLowerY??440;
+    const upperY=t.upperY??300,lowerY=t.lowerY??440;
     const top=Math.min(localY(upperY),localY(lowerY))-96;
     const bottom=Math.max(localY(upperY),localY(lowerY))+6;
     for(const px of [x-6,x+w-4])rect(px,top,10,bottom-top,3,'#8fa374');
@@ -236,6 +236,11 @@ export function createRenderer(canvas) {
     }
     ctx.restore();
   }
+  // 轿厢当前楼层：由 lifts 声明决定，渲染与内核读的是同一份数据。
+  function carFloorOf(e){
+    const t=e.lifts;if(!t)return e.y??440;
+    return e.state===t.upperState?(t.upperY??300):(t.lowerY??440);
+  }
   return {
     draw(level,snapshot,{time=0,fallAge=0,reducedMotion=false}={}) {
       ctx.setTransform(canvas.width/1200,0,0,canvas.height/640,0,0);ctx.clearRect(0,0,1200,640);
@@ -243,13 +248,13 @@ export function createRenderer(canvas) {
       tree(47,433,.9);tree(1170,435,.8);
       for(const p of level.platforms)platform(p);
       for(const s of level.stairs??[])stairs(s);
-      const isGround=(e)=>Boolean(e.traits)&&e.traits.groundInState!==undefined;
-      const rideFloor=(e)=>e.state===e.traits.rideUpperState?e.traits.rideUpperY:e.traits.rideLowerY;
-      const floorOf=(e)=>e.traits&&e.traits.rideUpperState!==undefined?rideFloor(e):(e.y??440);
-      for(const e of Object.values(snapshot.entities))if(isGround(e))bridge(e);
+      const isGround=(e)=>Boolean(e.ground);
+      const floorOf=(e)=>e.lifts?carFloorOf(e):(e.y??440);
+      const hidden=(e)=>Array.isArray(e.hiddenStates)&&e.hiddenStates.includes(e.state);
+      for(const e of Object.values(snapshot.entities))if(isGround(e)&&!hidden(e))bridge(e);
       ctx.save();ctx.translate(0,(level.goal.y??440)-440);destination(level.goal);ctx.restore();
       for(const e of Object.values(snapshot.entities)){
-        if(isGround(e))continue;
+        if(isGround(e)||hidden(e))continue;
         ctx.save();ctx.translate(0,floorOf(e)-440);
         if(e.kind==='switch')lever(e);
         else if(e.kind==='hazard')fan(e,snapshot.tick/60);

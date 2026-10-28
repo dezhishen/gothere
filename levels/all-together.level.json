@@ -15,10 +15,12 @@
   ],
   "stairs": [{ "x": 1040, "width": 80, "fromY": 300, "toY": 440 }],
   "entities": [
-    { "id": "axe", "kind": "axe", "x": 150, "width": 34, "state": "idle", "label": "旧斧头", "capabilities": { "clickable": {} } },
+    { "id": "axe", "kind": "axe", "x": 150, "width": 34, "state": "idle", "label": "旧斧头" },
     { "id": "key", "kind": "key", "x": 300, "width": 20, "state": "idle", "label": "铜钥匙" },
-    { "id": "guard", "kind": "guard", "x": 380, "width": 34, "state": "patrolling", "label": "巡逻机关", "capabilities": { "patrol": { "minX": 380, "maxX": 470, "speed": 48, "activeState": "patrolling" } } },
-    { "id": "plate", "kind": "plate", "x": 540, "width": 50, "state": "idle", "label": "门前踏板" },
+    { "id": "guard", "kind": "guard", "x": 380, "width": 34, "state": "patrolling", "label": "巡逻机关", "moves": { "inState": "patrolling", "speed": 48, "between": [380, 470] } },
+    { "id": "plate", "kind": "plate", "x": 540, "width": 50, "state": "idle", "label": "门前踏板",
+      "reacts": { "need": { "kind": "key", "tags": ["key", "yellow"] }, "consume": true,
+        "unmet": { "reason": "locked", "message": "踏板下面有个锁眼，要一把黄钥匙。" } } },
     { "id": "gate", "kind": "gate", "x": 600, "width": 28, "state": "closed", "label": "铁门" },
     { "id": "bridge-switch", "kind": "switch", "x": 690, "width": 28, "state": "off", "label": "桥开关" },
     { "id": "bridge", "kind": "bridge", "x": 700, "width": 60, "state": "folded", "label": "限时桥" },
@@ -29,13 +31,11 @@
     {
       "id": "drop-axe",
       "on": { "type": "click", "source": "axe" },
-      "if": [{ "entity": "axe", "state": "held" }],
       "actions": [{ "type": "set", "target": "axe", "state": "idle" }]
     },
     {
       "id": "stop-guard",
       "on": { "type": "click", "source": "guard" },
-      "if": [{ "entity": "guard", "state": "patrolling" }],
       "actions": [
         { "type": "set", "target": "guard", "state": "stopped" },
         { "type": "after", "ticks": 420, "actions": [{ "type": "set", "target": "guard", "state": "patrolling" }] }
@@ -44,13 +44,11 @@
     {
       "id": "plate-opens-gate",
       "on": { "type": "enter", "source": "plate" },
-      "if": [{ "entity": "key", "state": "held" }],
       "actions": [{ "type": "set", "target": "gate", "state": "open" }]
     },
     {
       "id": "extend-bridge",
       "on": { "type": "click", "source": "bridge-switch" },
-      "if": [{ "entity": "bridge", "state": "folded" }],
       "actions": [
         { "type": "set", "target": "bridge-switch", "state": "on" },
         { "type": "set", "target": "bridge", "state": "extended" },
@@ -67,7 +65,6 @@
     {
       "id": "call-lift",
       "on": { "type": "click", "source": "lift-switch" },
-      "if": [{ "entity": "lift", "state": "lower" }],
       "actions": [
         { "type": "set", "target": "lift-switch", "state": "on" },
         { "type": "set", "target": "lift", "state": "upper" }

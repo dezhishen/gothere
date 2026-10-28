@@ -10,6 +10,9 @@ import {
   registerFactory,
   resetFactories,
 } from '../src/core/interpreters/factories/index.js';
+import { fieldsOfCategory, schemaOfCategory } from '../src/core/contract/registry.js';
+import { validateDoc } from '../src/core/contract/validate.js';
+import { levels } from './levels-fixture.mjs';
 
 test.beforeEach(() => resetFactories());
 
@@ -22,6 +25,20 @@ test('the system has exactly three content factories: map / mechanism / item', (
   assert.deepEqual(getFactory('item').kinds, ['axe', 'hammer', 'key']);
 });
 
+test('every category owns its own schema, so the field sets differ', () => {
+  const item = schemaOfCategory('item');
+  const mechanism = schemaOfCategory('mechanism');
+  assert.equal(item.label, '物品');
+  assert.equal(mechanism.label, '机关');
+  assert.deepEqual(item.slots, ['tags', 'reacts', 'harms', 'carryable']);
+  assert.deepEqual(mechanism.slots, ['reacts', 'blocks', 'harms', 'moves', 'ground', 'lifts']);
+  assert.deepEqual(schemaOfCategory('map').slots, []);
+  assert.notDeepEqual(fieldsOfCategory('item'), fieldsOfCategory('mechanism'));
+  assert.ok(fieldsOfCategory('mechanism').includes('blocks'));
+  assert.ok(!fieldsOfCategory('item').includes('blocks'), '物品没有阻挡这种动作');
+  assert.ok(fieldsOfCategory('item').includes('tags'));
+});
+
 test('a type belongs to exactly one factory and the factory is its only owner', () => {
   assert.equal(factoryFor('gate').category, 'mechanism');
   assert.equal(factoryFor('hammer').category, 'item');
@@ -30,41 +47,63 @@ test('a type belongs to exactly one factory and the factory is its only owner', 
   const axe = createType('axe');
   assert.equal(axe.category, 'item');
   assert.deepEqual(axe.states.map((state) => state.id), ['idle', 'held']);
-  assert.deepEqual(Object.keys(axe.capabilities), ['holdable', 'damageOnContact']);
+  assert.deepEqual(Object.keys(axe.slots).sort(), ['carryable', 'harms', 'reacts']);
   assert.equal(axe.version, 1);
+  const key = createType('key');
+  assert.deepEqual(key.tags, ['key', 'yellow']);
+  assert.equal(key.consumedState, 'used');
+  assert.deepEqual(key.hiddenStates, ['used']);
 });
 
-test('every factory implements the same interface', () => {
+test('a category rejects declarations that belong to another category', () => {
+  const doc = structuredClone(levels[0]);
+  doc.entities.push({
+    id: 'sneaky-key', kind: 'key', x: 100, width: 20, state: 'idle', label: '想挡路的钥匙',
+    blocks: { inState: 'idle', reason: 'gate' },
+  });
+  const result = validateDoc(doc);
+  assert.equal(result.ok, false);
+  const error = result.errors.find((item) => item.path.endsWith('.blocks'));
+  assert.equal(error.code, 'SLOT_UNKNOWN');
+  assert.match(error.message, /item|物品/);
+});
+
+test('every factory implements the same interface, schema included', () => {
   for (const factory of listFactories()) {
     for (const method of FACTORY_METHODS) {
       assert.equal(typeof factory[method], 'function', factory.category + '.' + method);
     }
     assert.equal(typeof factory.version, 'number');
     assert.ok(Array.isArray(factory.kinds));
+    assert.ok(Array.isArray(factory.schema.slots), factory.category + ' 必须声明 schema.slots');
+    assert.equal(factory.schema.category, factory.category);
   }
 });
 
 test('registration only accepts existing categories with the full interface', () => {
-  const full = { category: 'theme', version: 1, kinds: [], has() {}, create() {}, list() {}, parseSection() {} };
+  const full = { category: 'theme', version: 1, schema: { slots: [] }, kinds: [], has() {}, create() {}, list() {}, parseSection() {} };
   assert.throws(() => registerFactory(full), /类别/);
-  assert.throws(() => registerFactory({ category: 'item', version: 1 }), /必须实现|version|kinds/);
-  const partial = { category: 'item', version: 1, kinds: [], has() {}, create() {}, list() {} };
+  assert.throws(() => registerFactory({ category: 'item', version: 1 }), /必须实现|version|kinds|schema/);
+  const partial = { category: 'item', version: 1, schema: { slots: [] }, kinds: [], has() {}, create() {}, list() {} };
   assert.throws(() => registerFactory(partial), /parseSection/);
   assert.throws(() => registerFactory(getFactory('item')), /已注册/);
 });
 
 test('createFactory validates the products it produces', () => {
   assert.throws(() => createFactory({ category: 'nope', version: 1 }), /类别/);
-  assert.throws(() => createFactory({ category: 'item', version: 1, types: { broken: { version: 1 } } }), /defaultWidth/);
+  assert.throws(() => createFactory({ category: 'item', version: 1, schema: { slots: [] }, types: { broken: { version: 1 } } }), /defaultWidth/);
+  assert.throws(() => createFactory({ category: 'item', version: 1, types: {} }), /schema/);
   const factory = createFactory({
     category: 'item',
     version: 2,
+    schema: { label: '物品', slots: ['carryable'] },
     types: {
-      rock: { version: 1, defaultWidth: 20, iconOffset: 90, states: [{ id: 'idle', label: '放着' }], capabilities: {} },
+      rock: { version: 1, defaultWidth: 20, iconOffset: 90, states: [{ id: 'idle', label: '放着' }], slots: {} },
     },
   });
   assert.deepEqual(factory.kinds, ['rock']);
   assert.equal(factory.create('rock').category, 'item');
+  assert.deepEqual(factory.create('rock').slots, {});
   assert.equal(factory.create('missing'), null);
   assert.deepEqual(factory.parseSection({}), { ok: true, code: 'OK', errors: [] });
 });

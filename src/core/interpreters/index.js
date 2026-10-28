@@ -6,7 +6,7 @@
 // 每条声明的 supports 是它覆盖的版本；没有覆盖就明确失败，绝不「尽力解释」。
 // 新增一种数据类型 = 加一份文件 + 在 resetInterpreters 里登记一行。
 
-import { listTypes } from '../contract/registry.js';
+import { COMMON_FIELDS, listTypes } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
 import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
 import { listFactories } from './factories/index.js';
@@ -92,7 +92,10 @@ export function describePlatform() {
     factories: listFactories().map((factory) => ({
       category: factory.category,
       version: factory.version,
+      label: factory.schema.label,
       kinds: [...factory.kinds],
+      slots: [...factory.schema.slots],
+      fields: Object.freeze([...COMMON_FIELDS, ...factory.schema.slots]),
     })),
   };
 }

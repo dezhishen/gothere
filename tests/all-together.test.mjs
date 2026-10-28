@@ -30,7 +30,8 @@ test('the demo level needs axe, key, guard, plate, bridge, lift and stairs toget
   assert.equal(Math.round(state.tick), 1032);
   assert.equal(state.entities.gate.state, 'open');
   assert.equal(state.entities.lift.state, 'upper');
-  assert.equal(state.actor.holding, 'key');
+  assert.equal(state.entities.key.state, 'used', '钥匙被压力板用掉了');
+  assert.equal(state.actor.holding, null, '用掉之后手就空出来了');
 });
 
 test('every mechanic is load bearing: skipping one loses the run', () => {
@@ -73,11 +74,10 @@ test('patrol moves the guard, stopping freezes it, and it restarts on its own', 
     width: 34,
     state: 'patrolling',
     label: '巡逻机关',
-    capabilities: { patrol: { minX: 380, maxX: 470, speed: 48, activeState: 'patrolling' } },
+    moves: { inState: 'patrolling', speed: 48, between: [380, 470] },
   }], [{
     id: 'stop-guard',
     on: { type: 'click', source: 'guard' },
-    if: [{ entity: 'guard', state: 'patrolling' }],
     actions: [
       { type: 'set', target: 'guard', state: 'stopped' },
       { type: 'after', ticks: 420, actions: [{ type: 'set', target: 'guard', state: 'patrolling' }] },
@@ -108,7 +108,7 @@ test('a patrolling crusher blocks the way while it is active', () => {
     width: 44,
     state: 'active',
     label: '碎石机',
-    capabilities: { patrol: { minX: 380, maxX: 460, speed: 36, activeState: 'active' } },
+    moves: { inState: 'active', speed: 36, between: [380, 460] },
   }]);
 
   const blocked = play(flat());

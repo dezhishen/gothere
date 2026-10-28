@@ -15,8 +15,7 @@
       "x": 330,
       "width": 34,
       "state": "idle",
-      "label": "生锈的斧头",
-      "capabilities": { "clickable": {} }
+      "label": "生锈的斧头"
     },
     { "id": "hammer", "kind": "hammer", "x": 620, "width": 32, "state": "idle", "label": "木柄锤子" },
     { "id": "gate", "kind": "gate", "x": 960, "width": 28, "state": "closed", "label": "木栅门" }
@@ -25,13 +24,11 @@
     {
       "id": "put-axe-down",
       "on": { "type": "click", "source": "axe" },
-      "if": [{ "entity": "axe", "state": "held" }],
       "actions": [{ "type": "set", "target": "axe", "state": "idle" }]
     },
     {
       "id": "hammer-opens",
       "on": { "type": "click", "source": "hammer" },
-      "if": [{ "entity": "hammer", "state": "held" }],
       "actions": [{ "type": "set", "target": "gate", "state": "open" }]
     }
   ]

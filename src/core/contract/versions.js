@@ -2,7 +2,7 @@
 // 能力支持来自「已注册的能力实现」，类型支持来自「数据里的预设 × 能力是否实现」，
 // 文档解释器只声明它能读哪些 schemaVersion —— 三者相乘才是平台真正能跑的东西。
 
-import { listCapabilities } from '../capabilities/index.js';
+import { listSlots } from '../capabilities/index.js';
 import { createType, listTypeDescriptors } from '../interpreters/factories/index.js';
 
 export const SCHEMA_VERSION = 1;
@@ -30,31 +30,29 @@ export function requirementsOf(doc) {
     if (typeof entity.kind === 'string') {
       types[entity.kind] = Math.max(types[entity.kind] ?? 0, entityTypeVersion(entity));
     }
-    const declared = entity.capabilities;
-    if (declared && typeof declared === 'object' && !Array.isArray(declared)) {
-      for (const [name, params] of Object.entries(declared)) {
-        if (params === false || params === null) continue;
-        const capability = listCapabilities().find((item) => item.id === name);
-        capabilities[name] = Math.max(capabilities[name] ?? 0, capability ? capability.version : 1);
-      }
+    const implemented = listSlots();
+    for (const slot of implemented) {
+      const params = entity[slot.id];
+      if (params === undefined || params === false || params === null) continue;
+      capabilities[slot.id] = Math.max(capabilities[slot.id] ?? 0, slot.version);
     }
   }
   return { schema, types, capabilities };
 }
 
-/** 已实现的能力 → 支持的版本。 */
+/** 已实现的声明槽 → 支持的版本。 */
 export function capabilityVersions() {
   const out = {};
-  for (const capability of listCapabilities()) out[capability.id] = [capability.version];
+  for (const slot of listSlots()) out[slot.id] = [slot.version];
   return out;
 }
 
-/** 能跑的类型 → 支持的版本：工厂产出的类型，且它的每条能力都有实现。 */
+/** 能跑的类型 → 支持的版本：工厂产出的类型，且它用到的每个声明槽都有实现。 */
 export function typeVersions() {
-  const implemented = new Set(listCapabilities().map((capability) => capability.id));
+  const implemented = new Set(listSlots().map((slot) => slot.id));
   const out = {};
   for (const type of listTypeDescriptors()) {
-    const missing = Object.keys(type.capabilities).filter((name) => !implemented.has(name));
+    const missing = Object.keys(type.slots).filter((name) => !implemented.has(name));
     if (missing.length === 0) out[type.id] = [type.version];
   }
   return out;

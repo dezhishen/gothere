@@ -1,12 +1,14 @@
 // 四层校验：版本 → 结构 → 类型 → 引用 → 语义。
 // 版本先于内容；编辑器只跑前两层（editable），因此可以加载「暂时不可玩」的半成品。
+// 实体字段按**类别 schema** 校验：物品能写的字段与机关不同，写错槽会被直接挡下。
 
 import { LIMITS, WORLD } from './constants.js';
-import { eventsOfEntity, isCapability, isType, typeDescriptor } from './registry.js';
-import { getFactory } from '../interpreters/factories/index.js';
+import { eventsOfEntity, fieldsOfCategory, isSlot, isType, schemaOfCategory, tagsOfEntity, typeDescriptor } from './registry.js';
+import { factoryFor, getFactory } from '../interpreters/factories/index.js';
 import { SCHEMA_VERSION, requirementsOf } from './versions.js';
 
 const ID_PATTERN = /^[a-z][a-z0-9-]{0,47}$/;
+const REACT_INPUTS = Object.freeze(['input', 'contact']);
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNumber = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -82,6 +84,8 @@ export function validateDoc(input, options = {}) {
   if (!Array.isArray(input.entities) || rawEntities.length > LIMITS.maxEntities) {
     fail('SCHEMA_INVALID', 'entities', 'entities 必须为最多 ' + LIMITS.maxEntities + ' 项的数组。');
   }
+
+  // 3. 结构层（实体）：公共字段 + 类别 schema 的槽白名单。
   rawEntities.forEach((entity, index) => {
     const path = 'entities[' + index + ']';
     if (!isObject(entity)) { fail('SCHEMA_INVALID', path, path + ' 必须是对象。'); return; }
@@ -106,15 +110,21 @@ export function validateDoc(input, options = {}) {
     if (entity.typeVersion !== undefined && !(Number.isInteger(entity.typeVersion) && entity.typeVersion > 0)) {
       fail('SCHEMA_INVALID', path + '.typeVersion', 'typeVersion 必须是正整数：' + String(entity.id));
     }
-    if (entity.capabilities !== undefined && !isObject(entity.capabilities)) {
-      fail('SCHEMA_INVALID', path + '.capabilities', 'capabilities 必须是对象：' + String(entity.id));
-    }
-    if (isObject(entity.capabilities)) {
-      for (const [name, params] of Object.entries(entity.capabilities)) {
-        if (params !== false && params !== null && !isObject(params)) {
-          fail('SCHEMA_INVALID', path + '.capabilities.' + name, '能力参数必须是对象或 false（关闭）：' + String(entity.id));
-        }
+    const category = isType(entity.kind) ? typeDescriptor(entity.kind).category : null;
+    if (!category) return; // 类型层会报 TYPE_UNKNOWN，这里不再猜字段
+    const schema = schemaOfCategory(category);
+    const allowed = fieldsOfCategory(category);
+    for (const key of Object.keys(entity)) {
+      if (allowed.includes(key)) continue;
+      if (isSlot(key)) {
+        fail('SLOT_UNKNOWN', path + '.' + key,
+          category + '（' + (schema ? schema.label : category) + '）不接受 ' + key + '；可用：' + (schema ? schema.slots.join('、') || '（无）' : '（无）') + '。');
+      } else {
+        fail('SCHEMA_INVALID', path + '.' + key, '未知字段 ' + key + '：' + String(entity.id));
       }
+    }
+    if (entity.tags !== undefined && (!Array.isArray(entity.tags) || entity.tags.some((tag) => !isText(tag, LIMITS.labelMax)))) {
+      fail('SCHEMA_INVALID', path + '.tags', 'tags 必须是字符串数组：' + String(entity.id));
     }
   });
 
@@ -123,25 +133,28 @@ export function validateDoc(input, options = {}) {
     fail('SCHEMA_INVALID', 'rules', 'rules 必须为最多 ' + LIMITS.maxRules + ' 项的数组。');
   }
 
-  // 3. 类型层：kind 与状态来自注册表；能力名来自能力注册表。
+  // 4. 类型层：kind 与状态来自注册表；槽参数要与该类型的状态、该类的 schema 相符。
   const byId = new Map();
   rawEntities.forEach((entity, index) => {
     if (!isObject(entity)) return;
     const path = 'entities[' + index + ']';
     if (!isType(entity.kind)) {
       fail('TYPE_UNKNOWN', path + '.kind', '未知实体类型：' + String(entity.kind));
-    } else if (!isStateOf(entity, entity.state)) {
+      return;
+    }
+    const type = typeDescriptor(entity.kind);
+    if (!isStateOf(entity, entity.state)) {
       fail('STATE_INVALID', path + '.state', '实体初始状态无效：' + String(entity.id));
     }
-    if (isObject(entity.capabilities)) {
-      for (const name of Object.keys(entity.capabilities)) {
-        if (!isCapability(name)) fail('CAPABILITY_UNKNOWN', path + '.capabilities.' + name, '未知能力：' + name);
-      }
+    for (const name of schemaOfCategory(type.category).slots) {
+      const params = entity[name];
+      if (params === undefined) continue;
+      checkSlot(entity, name, params, path + '.' + name, fail);
     }
-    if (typeof entity.id === 'string' && !byId.has(entity.id)) byId.set(entity.id, entity);
+    if (!byId.has(entity.id)) byId.set(entity.id, entity);
   });
 
-  // 4. 引用层：id 图与动作图。
+  // 5. 引用层：id 图、动作图与事件图。
   const seen = new Set();
   rawEntities.forEach((entity, index) => {
     if (!isObject(entity) || typeof entity.id !== 'string') return;
@@ -181,6 +194,10 @@ export function validateDoc(input, options = {}) {
   rawRules.forEach((rule, index) => {
     const path = 'rules[' + index + ']';
     if (!isObject(rule)) { fail('SCHEMA_INVALID', path, path + ' 必须是对象。'); return; }
+    if (rule.if !== undefined) {
+      fail('SCHEMA_INVALID', path + '.if',
+        '连线表不接受 if：条件请写进元素自己的声明（reacts.from / reacts.need / blocks.inState），连线只负责「事件 → 动作」。');
+    }
     const on = rule.on;
     if (!isObject(on) || typeof on.type !== 'string' || typeof on.source !== 'string') {
       fail('SCHEMA_INVALID', path + '.on', '规则需要 on{type,source}。');
@@ -191,27 +208,130 @@ export function validateDoc(input, options = {}) {
         fail('REFERENCE_INVALID', path + '.on.type', '实体 ' + on.source + ' 不能发出事件 ' + on.type + '。');
       }
     }
-    if (rule.if !== undefined) {
-      if (!Array.isArray(rule.if) || rule.if.length > LIMITS.maxConditions) {
-        fail('SCHEMA_INVALID', path + '.if', 'if 必须是最多 ' + LIMITS.maxConditions + ' 项的数组。');
-      } else {
-        rule.if.forEach((condition, position) => {
-          const here = path + '.if[' + position + ']';
-          const entity = isObject(condition) ? byId.get(condition.entity) : null;
-          if (!entity) fail('REFERENCE_INVALID', here + '.entity', '条件引用的实体无效。');
-          else if (!isStateOf(entity, condition.state)) fail('REFERENCE_INVALID', here + '.state', '条件引用的状态无效。');
-        });
-      }
-    }
     checkActions(rule.actions, path + '.actions', 0);
   });
 
-  // 5. 语义层：几何可达，同样由地图工厂提供查询。只有 playable 才跑。
+  // 6. 语义层：几何可达 + 需求有人能提供（只有 playable 才跑）。
   if (mode === 'playable' && errors.length === 0) {
-    const terrain = getFactory('map').terrain({ platforms: input.platforms });
+    const terrain = getFactory('map').terrain({ platforms: input.platforms, stairs: input.stairs });
     if (!terrain.supports(input.actor.x)) fail('SEMANTIC_INVALID', 'actor.x', '角色起点需要位于地面上。');
     if (!terrain.supports(input.goal.x)) fail('SEMANTIC_INVALID', 'goal.x', '终点需要位于地面上。');
+    const provided = new Set();
+    for (const entity of rawEntities) {
+      for (const tag of tagsOfEntity(entity)) provided.add(tag);
+    }
+    rawEntities.forEach((entity, index) => {
+      const reacts = entity.reacts;
+      if (!isObject(reacts) || !isObject(reacts.need)) return;
+      const here = 'entities[' + index + '].reacts.need';
+      for (const tag of reacts.need.tags ?? []) {
+        if (!provided.has(tag)) {
+          fail('SEMANTIC_INVALID', here + '.tags', '需求标签 ' + tag + ' 没有任何元素提供，这条需求永远满足不了。');
+        }
+      }
+      if (typeof reacts.need.kind === 'string') {
+        const factory = factoryFor(reacts.need.kind);
+        if (!factory || factory.category !== 'item') {
+          fail('REFERENCE_INVALID', here + '.kind', '需求只能指向物品类型，收到：' + reacts.need.kind);
+        }
+      }
+    });
   }
 
   return finish(errors, mode, input);
+}
+
+/** 槽参数校验：状态名必须是该类型声明过的，数字要在合理范围内。 */
+function checkSlot(entity, name, params, path, fail) {
+  if (params === false || params === null) return;
+  if (!isObject(params)) {
+    fail('SCHEMA_INVALID', path, name + ' 声明必须是对象或 false（关闭）：' + String(entity.id));
+    return;
+  }
+  const requireState = (field) => {
+    if (params[field] !== undefined && !isStateOf(entity, params[field])) {
+      fail('REFERENCE_INVALID', path + '.' + field, name + '.' + field + ' 引用了未声明的状态：' + String(params[field]));
+    }
+  };
+  if (name === 'reacts') {
+    if (params.on !== undefined && !REACT_INPUTS.includes(params.on)) {
+      fail('SCHEMA_INVALID', path + '.on', 'reacts.on 只能是 ' + REACT_INPUTS.join(' / ') + '。');
+    }
+    requireState('from');
+    if (params.consume !== undefined && typeof params.consume !== 'boolean') {
+      fail('SCHEMA_INVALID', path + '.consume', 'reacts.consume 必须是布尔值。');
+    }
+    if (params.need !== undefined && params.need !== null) {
+      if (!isObject(params.need)) {
+        fail('SCHEMA_INVALID', path + '.need', 'reacts.need 必须是 {kind,tags} 对象。');
+      } else {
+        if (params.need.kind !== undefined && typeof params.need.kind !== 'string') {
+          fail('SCHEMA_INVALID', path + '.need.kind', 'need.kind 必须是类型名。');
+        }
+        if (params.need.tags !== undefined && (!Array.isArray(params.need.tags) || params.need.tags.some((tag) => !isText(tag, LIMITS.labelMax)))) {
+          fail('SCHEMA_INVALID', path + '.need.tags', 'need.tags 必须是字符串数组。');
+        }
+      }
+    }
+    if (params.unmet !== undefined) {
+      if (!isObject(params.unmet)) fail('SCHEMA_INVALID', path + '.unmet', 'reacts.unmet 必须是 {reason,message} 对象。');
+      else if (params.unmet.message !== undefined && typeof params.unmet.message !== 'string') {
+        fail('SCHEMA_INVALID', path + '.unmet.message', 'unmet.message 必须是字符串。');
+      }
+    }
+    if (params.actions !== undefined) {
+      if (!Array.isArray(params.actions)) {
+        fail('SCHEMA_INVALID', path + '.actions', 'reacts.actions 必须是数组。');
+      } else {
+        params.actions.forEach((action, index) => {
+          const here = path + '.actions[' + index + ']';
+          if (!isObject(action)) { fail('SCHEMA_INVALID', here, '动作必须是对象。'); return; }
+          if (action.type === 'become') {
+            if (!isStateOf(entity, action.state)) {
+              fail('REFERENCE_INVALID', here + '.state', 'become 引用了未声明的状态：' + String(action.state));
+            }
+          } else if (action.type === 'publish') {
+            if (!isText(action.event, LIMITS.labelMax)) fail('SCHEMA_INVALID', here + '.event', 'publish.event 必须是非空字符串。');
+          } else {
+            fail('SCHEMA_INVALID', here + '.type', '未知动作类型：' + String(action.type) + '（只支持 become / publish）。');
+          }
+        });
+      }
+    }
+  } else if (name === 'blocks' || name === 'harms' || name === 'moves' || name === 'ground') {
+    requireState('inState');
+    if (name === 'harms' && params.unlessHeld !== undefined && typeof params.unlessHeld !== 'boolean') {
+      fail('SCHEMA_INVALID', path + '.unlessHeld', 'harms.unlessHeld 必须是布尔值。');
+    }
+    if (name === 'moves') {
+      if (params.speed !== undefined && !(isNumber(params.speed) && params.speed >= 0)) {
+        fail('SCHEMA_INVALID', path + '.speed', 'moves.speed 必须是非负数。');
+      }
+      if (params.between !== undefined) {
+        const [min, max] = Array.isArray(params.between) ? params.between : [];
+        if (!inRange(min, 0, WORLD.width) || !inRange(max, 0, WORLD.width) || min >= max) {
+          fail('SCHEMA_INVALID', path + '.between', 'moves.between 必须是 [min,max] 且 0 ≤ min < max ≤ ' + WORLD.width + '。');
+        }
+      }
+    }
+  } else if (name === 'carryable') {
+    requireState('from');
+    requireState('to');
+    for (const field of ['offset', 'drop']) {
+      if (params[field] !== undefined && !isNumber(params[field])) {
+        fail('SCHEMA_INVALID', path + '.' + field, 'carryable.' + field + ' 必须是数字。');
+      }
+    }
+  } else if (name === 'lifts') {
+    requireState('lowerState');
+    requireState('upperState');
+    for (const field of ['lowerY', 'upperY']) {
+      if (params[field] !== undefined && !inRange(params[field], LIMITS.minFloorY, LIMITS.maxFloorY)) {
+        fail('SCHEMA_INVALID', path + '.' + field, 'lifts.' + field + ' 必须是 ' + LIMITS.minFloorY + '～' + LIMITS.maxFloorY + ' 的楼层高度。');
+      }
+    }
+    if (params.tolerance !== undefined && !(isNumber(params.tolerance) && params.tolerance >= 0)) {
+      fail('SCHEMA_INVALID', path + '.tolerance', 'lifts.tolerance 必须是非负数。');
+    }
+  }
 }

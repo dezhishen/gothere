@@ -1,37 +1,44 @@
-// 契约层的类型与能力视图：类型来自内容工厂（地图 / 机关 / 物品），
-// 能力来自能力实现注册表。这里只做聚合，不定义任何具体类型。
+// 契约层的类别与声明视图：类别 schema 归工厂所有，声明槽词汇归 capabilities 注册表。
+// 这里只做聚合：不定义任何具体类型，也不解释任何槽——解释是内核的事。
 
-import { getCapability, listCapabilities } from '../capabilities/index.js';
-import { createType, listTypeDescriptors } from '../interpreters/factories/index.js';
+import { getSlot, listSlots } from '../capabilities/index.js';
+import { createType, getFactory, listFactories, listTypeDescriptors } from '../interpreters/factories/index.js';
 import { LIMITS } from './constants.js';
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-/** 能力词汇表：版本、默认参数与事件，由能力注册表派生，校验与支持矩阵共用。 */
-export const CAPABILITIES = Object.freeze(Object.fromEntries(
-  listCapabilities().map((capability) => [
-    capability.id,
+/** 声明槽词汇表：版本、所属阶段、默认参数，由注册表派生。 */
+export const SLOTS = Object.freeze(Object.fromEntries(
+  listSlots().map((slot) => [
+    slot.id,
     Object.freeze({
-      version: capability.version,
-      params: capability.params ?? Object.freeze({}),
-      events: capability.events ?? Object.freeze([]),
+      version: slot.version,
+      stages: Object.freeze([...(slot.stages ?? [])]),
+      params: slot.params ?? Object.freeze({}),
     }),
   ]),
 ));
 
-/** 实体字段元数据：检查面板与 CLI 共用，新增字段只加一行。 */
-export const FIELDS = Object.freeze([
-  Object.freeze({ key: 'id', type: 'string', purpose: 'identity' }),
-  Object.freeze({ key: 'kind', type: 'enum', purpose: 'preset', optionsFrom: 'types' }),
-  Object.freeze({ key: 'x', type: 'number', min: LIMITS.entityMinX, max: LIMITS.entityMaxX, step: 1, label: '脚底 x' }),
-  Object.freeze({ key: 'width', type: 'number', min: LIMITS.minWidth, max: LIMITS.maxWidth, step: 1, label: '宽度', default: LIMITS.defaultWidth }),
-  Object.freeze({ key: 'label', type: 'string', minLength: 1, maxLength: LIMITS.labelMax, label: '名称' }),
-  Object.freeze({ key: 'state', type: 'enum', optionsFrom: 'states', label: '初始状态' }),
-  Object.freeze({ key: 'typeVersion', type: 'integer', min: 1, optional: true, label: '类型版本' }),
-  Object.freeze({ key: 'capabilities', type: 'object', optional: true, label: '能力覆盖（可用 false 关闭预设能力）' }),
-]);
+/** 所有类别都认的实体字段；其余字段必须出现在该类别 schema 的 slots 里。 */
+export const COMMON_FIELDS = Object.freeze(['id', 'kind', 'typeVersion', 'x', 'y', 'width', 'label', 'state']);
 
-/** 一个实体类型归哪个工厂、能产什么状态与能力；未知类型返回 null。 */
+/** 实体上可以写哪些字段：公共字段 + 该类别 schema 声明允许的槽。 */
+export function fieldsOfCategory(category) {
+  const factory = getFactory(category);
+  const slots = factory && factory.schema ? factory.schema.slots : [];
+  return [...COMMON_FIELDS, ...slots];
+}
+
+export function schemaOfCategory(category) {
+  const factory = getFactory(category);
+  return factory && factory.schema ? factory.schema : null;
+}
+
+export function categoryOf(kind) {
+  const type = createType(kind);
+  return type ? type.category : null;
+}
+
 export function typeDescriptor(kind) {
   return createType(kind);
 }
@@ -40,51 +47,71 @@ export function isType(kind) {
   return Boolean(typeDescriptor(kind));
 }
 
-export function isCapability(name) {
-  return typeof name === 'string' && Object.hasOwn(CAPABILITIES, name);
+export function isSlot(name) {
+  return typeof name === 'string' && Object.hasOwn(SLOTS, name);
 }
 
 /**
- * 预设能力 + 实体上的覆盖，合并成一份「能力 → 参数」表。
- * `{ "holdable": false }` 表示关掉预设里的这条能力——同一贴图不同配置靠它，而不是新类型。
+ * 实体实际生效的声明：类型预设 + 实体上的同名槽按字段合并。
+ * `blocks: false` 表示关掉预设里的这条声明——同一贴图不同配置靠它，而不是新类型。
  */
-export function capabilitiesOfEntity(entity) {
+export function slotsOfEntity(entity) {
   const merged = {};
   const type = typeDescriptor(entity && entity.kind);
-  if (type) {
-    for (const [name, params] of Object.entries(type.capabilities)) {
-      merged[name] = { ...(CAPABILITIES[name] ? CAPABILITIES[name].params : {}), ...params };
+  const declared = {};
+  for (const [name, params] of Object.entries(type ? type.slots : {})) {
+    merged[name] = { ...(SLOTS[name] ? SLOTS[name].params : {}), ...params };
+  }
+  if (entity && isPlainObject(entity)) {
+    for (const name of Object.keys(SLOTS)) {
+      if (entity[name] !== undefined) declared[name] = entity[name];
     }
   }
-  const declared = entity && entity.capabilities;
-  if (isPlainObject(declared)) {
-    for (const [name, params] of Object.entries(declared)) {
-      if (params === false || params === null) {
-        delete merged[name];
-        continue;
-      }
-      merged[name] = { ...(CAPABILITIES[name] ? CAPABILITIES[name].params : {}), ...(isPlainObject(params) ? params : {}) };
+  for (const [name, params] of Object.entries(declared)) {
+    if (params === false || params === null) {
+      delete merged[name];
+      continue;
     }
+    merged[name] = {
+      ...(SLOTS[name] ? SLOTS[name].params : {}),
+      ...(merged[name] ?? {}),
+      ...(isPlainObject(params) ? params : {}),
+    };
   }
   return merged;
 }
 
-/** 内核只认这些 traits；它们由能力模块自己派生，内核不认识具体能力。 */
-export function traitsOfEntity(entity) {
-  const traits = {};
-  for (const [name, params] of Object.entries(capabilitiesOfEntity(entity))) {
-    const capability = getCapability(name);
-    if (capability && typeof capability.traits === 'function') Object.assign(traits, capability.traits(params));
-  }
-  return Object.freeze(traits);
+/** 元素自己声明的东西：标签、被用掉之后变成什么态、哪些状态不画。 */
+export function tagsOfEntity(entity) {
+  const type = typeDescriptor(entity && entity.kind);
+  const declared = entity && Array.isArray(entity.tags) ? entity.tags : null;
+  if (declared) return [...declared];
+  return type && Array.isArray(type.tags) ? [...type.tags] : [];
 }
 
-/** 实体能发出的事件：由它实际具备的能力声明。跨类别订阅事件就靠这一条。 */
+export function consumedStateOf(entity) {
+  const type = typeDescriptor(entity && entity.kind);
+  return type && typeof type.consumedState === 'string' ? type.consumedState : null;
+}
+
+export function hiddenStatesOf(entity) {
+  const type = typeDescriptor(entity && entity.kind);
+  return type && Array.isArray(type.hiddenStates) ? [...type.hiddenStates] : [];
+}
+
+/** 接受玩家输入的元素：声明了 reacts 且 on 是 input。 */
+export function acceptsInput(entity) {
+  const reacts = entity && isPlainObject(entity) ? slotsOfEntity(entity).reacts : null;
+  return Boolean(reacts && reacts.on === 'input');
+}
+
+/** 元素能发出的事件：自己 publish 的 + 输入产生的 click（若接受输入）。 */
 export function eventsOfEntity(entity) {
   const names = new Set();
-  for (const name of Object.keys(capabilitiesOfEntity(entity))) {
-    const capability = getCapability(name);
-    for (const event of capability ? capability.events ?? [] : []) names.add(event);
+  const reacts = isPlainObject(entity) ? slotsOfEntity(entity).reacts : null;
+  if (reacts && reacts.on === 'input') names.add('click');
+  for (const action of (reacts && reacts.actions) ?? []) {
+    if (action && action.type === 'publish' && typeof action.event === 'string') names.add(action.event);
   }
   names.add('done');
   return [...names];
@@ -98,18 +125,33 @@ export function stateLabel(value) {
   return STATE_LABELS[value] ?? value;
 }
 
-/** describe(kind) 是检查面板、CLI --json 与文档生成的同一份元数据。 */
+function slotSummary(type) {
+  return Object.entries(type.slots ?? {}).map(([name, params]) => ({
+    name,
+    version: SLOTS[name] ? SLOTS[name].version : 1,
+    stages: SLOTS[name] ? [...SLOTS[name].stages] : [],
+    params: { ...(SLOTS[name] ? SLOTS[name].params : {}), ...params },
+  }));
+}
+
+/** describe(kind)：检查面板、CLI 与文档生成的同一份元数据，字段按类别取值。 */
 export function describe(kind) {
   if (kind === undefined || kind === null) {
     return Object.freeze({
-      types: listTypes(),
-      capabilities: Object.freeze(listCapabilities().map((capability) => Object.freeze({
-        id: capability.id,
-        version: capability.version,
-        params: capability.params,
-        events: capability.events,
+      categories: Object.freeze(listFactories().map((factory) => Object.freeze({
+        category: factory.category,
+        version: factory.version,
+        label: factory.schema ? factory.schema.label : factory.category,
+        kinds: Object.freeze([...factory.kinds]),
+        fields: Object.freeze(fieldsOfCategory(factory.category)),
+        slots: Object.freeze([...(factory.schema ? factory.schema.slots : [])]),
       }))),
-      fields: FIELDS,
+      slots: Object.freeze(listSlots().map((slot) => Object.freeze({
+        id: slot.id,
+        version: slot.version,
+        stages: Object.freeze([...(slot.stages ?? [])]),
+        params: slot.params ?? Object.freeze({}),
+      }))),
     });
   }
   const type = typeDescriptor(kind);
@@ -121,13 +163,20 @@ export function describe(kind) {
     defaultWidth: type.defaultWidth,
     iconOffset: type.iconOffset,
     states: type.states.map((item) => ({ id: item.id, label: item.label })),
-    events: [...new Set(Object.keys(type.capabilities).flatMap((name) => (CAPABILITIES[name] ? CAPABILITIES[name].events : [])))],
-    capabilities: Object.entries(type.capabilities).map(([name, params]) => ({
-      name,
-      version: CAPABILITIES[name].version,
-      params: { ...CAPABILITIES[name].params, ...params },
-    })),
-    fields: FIELDS,
+    tags: [...(type.tags ?? [])],
+    hiddenStates: [...(type.hiddenStates ?? [])],
+    consumedState: type.consumedState ?? null,
+    events: [...new Set(Object.values(type.slots ?? {}).flatMap((params) => {
+      const events = [];
+      if (params && params.on === 'input') events.push('click');
+      for (const action of (params && params.actions) ?? []) {
+        if (action && action.type === 'publish') events.push(action.event);
+      }
+      return events;
+    }))],
+    slots: slotSummary(type),
+    fields: fieldsOfCategory(type.category),
+    schema: schemaOfCategory(type.category),
   });
 }
 
@@ -136,8 +185,14 @@ export function listTypes() {
     id: type.id,
     category: type.category,
     version: type.version,
-    states: type.states.map((item) => item.id),
-    events: [...new Set(Object.keys(type.capabilities).flatMap((name) => (CAPABILITIES[name] ? CAPABILITIES[name].events : [])))],
-    capabilities: Object.keys(type.capabilities),
+    states: type.states.map((state) => state.id),
+    tags: [...(type.tags ?? [])],
+    slots: Object.keys(type.slots ?? {}),
   }));
+}
+
+/** 类型面板里展示的宽度默认值，未声明时退回全局默认。 */
+export function defaultWidthOf(kind) {
+  const type = typeDescriptor(kind);
+  return type ? type.defaultWidth : LIMITS.defaultWidth;
 }

@@ -81,10 +81,12 @@ test('ready and paused recordings preserve their status', () => {
 });
 test('same tick inputs preserve their declared order', () => {
   const level = structuredClone(levels[0]);
-  level.rules.push({ on: { type: 'click', source: 'lever' }, if: [{ entity: 'lever', state: 'on' }],
-    actions: [{ type: 'set', target: 'bridge', state: 'folded' }] });
+  level.rules = [
+    { on: { type: 'click', source: 'lever' }, actions: [{ type: 'set', target: 'bridge', state: 'extended' }] },
+    { on: { type: 'click', source: 'lever' }, actions: [{ type: 'set', target: 'bridge', state: 'folded' }] },
+  ];
   const game = createSimulation(level); game.start(); game.click('lever'); game.step();
-  assert.equal(game.snapshot().entities.bridge.state, 'folded');
+  assert.equal(game.snapshot().entities.bridge.state, 'folded', '后声明的连线能看到并覆盖前一条的结果');
 });
 test('later scheduled actions execute deterministically when due times match', () => {
   const level = structuredClone(levels[0]);

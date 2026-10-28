@@ -1,8 +1,8 @@
 // 文档 → 内核模型。解析器在完成四层校验后调用它：此后内核只读模型，不再看 kind 字符串。
-// 地形（地面段 + 楼梯）由地图工厂产出，内核只调用它的高度查询。
+// 实体上的声明槽在这里合并好（类型预设 + 实体覆盖），内核只读合并结果，不查表。
 
 import { WORLD } from './constants.js';
-import { capabilitiesOfEntity, traitsOfEntity, typeDescriptor } from './registry.js';
+import { consumedStateOf, hiddenStatesOf, slotsOfEntity, tagsOfEntity, typeDescriptor } from './registry.js';
 import { getFactory } from '../interpreters/factories/index.js';
 
 const floorOf = (value) => (value === undefined ? WORLD.groundY : value);
@@ -15,7 +15,6 @@ export function compileModel(doc) {
   }));
   const entities = doc.entities.map((entity) => {
     const type = typeDescriptor(entity.kind);
-    const capabilities = capabilitiesOfEntity(entity);
     return Object.freeze({
       id: entity.id,
       kind: entity.kind,
@@ -25,8 +24,10 @@ export function compileModel(doc) {
       y: floorOf(entity.y),
       width: entity.width === undefined ? type.defaultWidth : entity.width,
       state: entity.state,
-      capabilities: Object.freeze({ ...capabilities }),
-      traits: traitsOfEntity(entity),
+      tags: Object.freeze(tagsOfEntity(entity)),
+      hiddenStates: Object.freeze(hiddenStatesOf(entity)),
+      consumedState: consumedStateOf(entity),
+      ...slotsOfEntity(entity),
     });
   });
   return Object.freeze({
@@ -48,7 +49,7 @@ export function compileModel(doc) {
     }))),
     terrain: getFactory('map').terrain({ platforms: doc.platforms, stairs: doc.stairs }),
     entities: Object.freeze(entities),
-    rules: structuredClone(doc.rules),
+    rules: structuredClone(doc.rules ?? []),
     meta: doc.meta === undefined ? undefined : structuredClone(doc.meta),
   });
 }

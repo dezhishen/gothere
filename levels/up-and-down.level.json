@@ -21,7 +21,6 @@
     {
       "id": "call-lift-up",
       "on": { "type": "click", "source": "lever" },
-      "if": [{ "entity": "lift", "state": "lower" }],
       "actions": [
         { "type": "set", "target": "lever", "state": "on" },
         { "type": "set", "target": "lift", "state": "upper" }

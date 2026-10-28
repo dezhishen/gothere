@@ -54,12 +54,6 @@
         "type": "click",
         "source": "fan"
       },
-      "if": [
-        {
-          "entity": "fan",
-          "state": "running"
-        }
-      ],
       "actions": [
         {
           "type": "set",

@@ -51,4 +51,7 @@ export const MESSAGES = Object.freeze({
   timeout: '这段路走成了长征。歇一下，重新出发吧。',
   limit: '机关规则太忙了。请减少重复触发或延迟动作，再重新出发。',
   won: '到了！就说一定能到这里。',
+  hurt: '身上挨了一下，走不动了。',
+  gate: '前面过不去。',
+  need: '还差一样东西。',
 });

@@ -62,10 +62,13 @@ test('provides a headless simulation independent of the renderer', () => {
     game.step(89); assert.equal(game.snapshot().entities.bridge.state, 'extended');
     game.step(); assert.equal(game.snapshot().entities.bridge.state, 'folded');
   });
-  test('rules respect state conditions', () => {
-    const level = fixture(); level.rules[0].if = [{ entity: 'lever', state: 'on' }];
+  test('input gating lives in the element declaration, not in the wiring', () => {
+    // 开关说「只在自己处于 on 时可以点」：开局是 off，所以这一下应当没人听。
+    const level = fixture();
+    level.entities.find((entity) => entity.id === 'lever').reacts = { from: 'on' };
     const game = createSimulation(level); game.start(); game.click('lever'); game.step();
     assert.equal(game.snapshot().entities.bridge.state, 'folded');
+    assert.equal(game.snapshot().entities.lever.state, 'off');
   });
   test('input replay reproduces the exact terminal state', () => {
     const level = fixture(); const game = createSimulation(level); game.start(); game.step(45);
