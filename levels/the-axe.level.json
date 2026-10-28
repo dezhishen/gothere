@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "the-axe",
+  "name": "斧头与锤子",
+  "description": "路上躺着一把斧头，手只有一双。锤子握稳了，敲门才算数。",
+  "hint": "斧头会被顺手捡起；点一下手里的斧头，把它放到身后。再走到锤子边拿起它，点一下锤子，木栅门就开了。",
+  "world": { "width": 1200, "height": 640, "groundY": 440 },
+  "actor": { "x": 80, "speed": 64 },
+  "goal": { "x": 1120 },
+  "platforms": [{ "x": 0, "width": 1200 }],
+  "entities": [
+    {
+      "id": "axe",
+      "kind": "axe",
+      "x": 330,
+      "width": 34,
+      "state": "idle",
+      "label": "生锈的斧头",
+      "capabilities": { "clickable": {} }
+    },
+    { "id": "hammer", "kind": "hammer", "x": 620, "width": 32, "state": "idle", "label": "木柄锤子" },
+    { "id": "gate", "kind": "gate", "x": 960, "width": 28, "state": "closed", "label": "木栅门" }
+  ],
+  "rules": [
+    {
+      "id": "put-axe-down",
+      "on": { "type": "click", "source": "axe" },
+      "if": [{ "entity": "axe", "state": "held" }],
+      "actions": [{ "type": "set", "target": "axe", "state": "idle" }]
+    },
+    {
+      "id": "hammer-opens",
+      "on": { "type": "click", "source": "hammer" },
+      "if": [{ "entity": "hammer", "state": "held" }],
+      "actions": [{ "type": "set", "target": "gate", "state": "open" }]
+    }
+  ]
+}

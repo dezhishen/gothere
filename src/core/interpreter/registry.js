@@ -1,15 +1,17 @@
-// 解析器注册表：平台可以注册多个解释器，按文档的版本要求选一个来解析并运行。
-// 选择是确定的：apiVersion 降序、id 升序；任一要求无覆盖就明确失败，绝不「尽力解释」。
+// 文档解释器注册表：一个解释器只负责一种「文档骨架 + 动作词汇 + tick 顺序」。
+// 它不拥有类型：类型是数据（contract/registry），类型能不能跑由能力实现（core/capabilities）决定。
+// 选择是确定的：schema 命中后按 apiVersion 降序、id 升序；任一要求无覆盖就明确失败。
 
 import { listTypes } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
-import { covers, describeGaps, describeRequirements, mergeSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
-import { createV1Interpreter } from './v1.js';
+import { covers, describeGaps, describeRequirements, platformSupports, requirementsOf, PLATFORM, SCHEMA_VERSION } from '../contract/versions.js';
+import { createLevelInterpreter } from './level-1.js';
 
 const interpreters = new Map();
 
 const ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
+/** 解释器只需要声明它能读哪些 schemaVersion；类型与能力由平台聚合。 */
 export function registerInterpreter(descriptor) {
   if (!descriptor || typeof descriptor !== 'object') throw new Error('解析器必须是一个对象。');
   const { id, apiVersion, supports } = descriptor;
@@ -17,7 +19,9 @@ export function registerInterpreter(descriptor) {
     throw new Error('解析器 id 必须以小写字母开头，且只含小写字母、数字或短横线。');
   }
   if (!Number.isInteger(apiVersion) || apiVersion < 1) throw new Error('解析器 apiVersion 必须是正整数。');
-  if (!supports || !Array.isArray(supports.schema)) throw new Error('解析器必须声明 supports.schema。');
+  if (!supports || !Array.isArray(supports.schema) || supports.schema.length === 0) {
+    throw new Error('解析器必须声明 supports.schema。');
+  }
   if (typeof descriptor.parse !== 'function') throw new Error('解析器必须实现 parse(doc, options)。');
   if (typeof descriptor.createSimulation !== 'function') throw new Error('解析器必须实现 createSimulation(model)。');
   if (interpreters.has(id)) throw new Error('解析器 ' + id + ' 已注册。');
@@ -40,13 +44,13 @@ export function listInterpreters() {
   });
 }
 
-/** 恢复默认注册表：平台只带 core-v1，新增版本 = 发布新平台。 */
+/** 恢复默认注册表：平台只带 level-1，新增文档格式 = 发布新平台。 */
 export function resetInterpreters() {
   interpreters.clear();
-  registerInterpreter(createV1Interpreter());
+  registerInterpreter(createLevelInterpreter());
 }
 
-/** 平台的对外声明：有哪些解释器、整体支持哪些 schema / 类型 / 能力版本。 */
+/** 平台的对外声明：文档解释器 × 数据里的类型 × 已实现的能力。 */
 export function describePlatform() {
   const list = listInterpreters();
   return {
@@ -57,21 +61,34 @@ export function describePlatform() {
       apiVersion: interpreter.apiVersion,
       supports: interpreter.supports,
     })),
-    supports: mergeSupports(list),
+    supports: platformSupports(list),
     types: listTypes(),
   };
 }
 
-/** 选一个解释器：覆盖文档全部版本要求、且排序在前的那个。 */
+/**
+ * 两级解析：
+ * 1. 先选中能读这份文档骨架（schemaVersion）的解释器；
+ * 2. 再要求平台实现覆盖文档用到的每个「类型@版本」与「能力@版本」。
+ */
 export function resolveInterpreter(doc) {
   const requirements = requirementsOf(doc);
-  const report = [];
-  for (const interpreter of listInterpreters()) {
-    const coverage = covers(interpreter.supports, requirements);
-    if (coverage.ok) return { ok: true, interpreter, requirements, gaps: [] };
-    report.push({ interpreter: interpreter.id, gaps: coverage.gaps });
+  const list = listInterpreters();
+  const supports = platformSupports(list);
+  const interpreter = list.find((item) => item.supports.schema.includes(requirements.schema));
+  if (!interpreter) {
+    return {
+      ok: false,
+      requirements,
+      gaps: [{
+        interpreter: 'platform',
+        gaps: [{ layer: 'schema', name: 'schemaVersion', required: requirements.schema, supported: supports.schema }],
+      }],
+    };
   }
-  return { ok: false, requirements, gaps: report };
+  const coverage = covers(supports, requirements);
+  if (!coverage.ok) return { ok: false, requirements, gaps: [{ interpreter: interpreter.id, gaps: coverage.gaps }] };
+  return { ok: true, interpreter, requirements, gaps: [] };
 }
 
 function unsupported(result) {
@@ -84,14 +101,14 @@ function unsupported(result) {
     errors: [{
       code: 'UNSUPPORTED_VERSION',
       path: '',
-      message: '没有解释器覆盖 ' + describeRequirements(result.requirements) + '。' + detail,
+      message: '没有实现覆盖 ' + describeRequirements(result.requirements) + '。' + detail,
     }],
     requirements: result.requirements,
     gaps: result.gaps,
   };
 }
 
-/** 没有解释器能覆盖时，先看内容本身是否就坏了：内容错误比版本缺口更可行动。 */
+/** 没有实现能覆盖时，先看内容本身是否就坏了：内容错误比缺口更可行动。 */
 function diagnose(input, mode, resolution) {
   const validation = validateDoc(input, { mode });
   if (!validation.ok) return { ...validation, requirements: resolution.requirements, gaps: resolution.gaps };
@@ -135,7 +152,7 @@ export function createGame(doc) {
 export function replayLevel(doc, recording) {
   return runWith(doc, 'playable', (interpreter, model) => {
     if (typeof interpreter.replay !== 'function') {
-      const error = new Error('解析器 ' + interpreter.id + ' 不支持回放。');
+      const error = new Error('解释器 ' + interpreter.id + ' 不支持回放。');
       error.code = 'UNSUPPORTED_VERSION';
       throw error;
     }

@@ -23,14 +23,14 @@ test('--json keeps stdout machine readable for discovery', () => {
   const payload = json(result);
   assert.equal(payload.ok, true);
   assert.ok(payload.data.skills.length >= 6);
-  assert.equal(payload.data.platform.interpreters[0].id, 'core-v1');
+  assert.equal(payload.data.platform.interpreters[0].id, 'level-1');
   assert.deepEqual(payload.data.platform.supports.schema, [1]);
 });
 
 test('the human view still explains interpreters and skills', () => {
   const result = cli(['skills']);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /core-v1/);
+  assert.match(result.stdout, /level-1/);
   assert.match(result.stdout, /level\.simulate/);
 });
 
@@ -39,7 +39,7 @@ test('level simulate runs a known solution through the selected interpreter', ()
   assert.equal(result.status, 0, result.stderr);
   const payload = json(result);
   assert.equal(payload.data.status, 'won');
-  assert.equal(payload.data.interpreter.id, 'core-v1');
+  assert.equal(payload.data.interpreter.id, 'level-1');
 });
 
 test('exit codes follow the contract: 2 usage, 3 validation, 4 simulation', async () => {

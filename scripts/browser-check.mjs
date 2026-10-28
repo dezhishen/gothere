@@ -38,7 +38,7 @@ try {
   check(!/梦游|梦醒|晚安/.test(await page.locator('body').innerText()), 'sleepwalking setting is removed');
   await page.screenshot({ path:artifact('desktop.png'),fullPage:true });
   check(await status(page) === '准备出发', 'initial scene is ready');
-  check(await page.locator('.level-tab').count() === 3, 'three levels available');
+  check(await page.locator('.level-tab').count() === 4, 'four levels available');
   await page.locator('#speed').click(); await page.locator('#speed').click();
   await page.getByRole('button',{name:'出发！',exact:true}).click();
   await page.getByRole('button',{name:'操作：木桥开关',exact:true}).click();
@@ -67,6 +67,19 @@ try {
   await settle(page, 2100);
   check(await status(page) === '终于到了', 'combined timed level can be completed');
   console.log('PASS desktop: second and third level solutions');
+
+  // 前面的第一关把倍速调到了 4×（1→2→4），这里点一次回到 1×，按真实时间验证可携带物品。
+  await page.locator('#speed').click();
+  await page.getByRole('button',{name:'关卡 4：斧头与锤子',exact:true}).click();
+  await page.locator('#play').click();
+  await settle(page, 4200);
+  check(await page.locator('.hotspot').count() === 2, 'capability-driven hotspots appear for the axe and the hammer');
+  await page.getByRole('button',{name:'操作：生锈的斧头',exact:true}).click();
+  await settle(page, 4800);
+  await page.getByRole('button',{name:'操作：木柄锤子',exact:true}).click();
+  await settle(page, 8500);
+  check(await status(page) === '终于到了', 'portable items open the way');
+  console.log('PASS desktop: portable items (axe / hammer)');
 
   await page.locator('#reset').click(); await page.locator('#play').click(); await settle(page, 250);
   await page.locator('#play').click();

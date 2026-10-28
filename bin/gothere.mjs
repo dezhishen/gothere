@@ -137,12 +137,11 @@ function renderPlatform(result) {
     lines.push('');
     lines.push('解释器 ' + interpreter.id + '（apiVersion ' + interpreter.apiVersion + '）');
     lines.push('  schema : ' + (interpreter.supports.schema ?? []).join(', '));
-    lines.push('  types  : ' + Object.entries(interpreter.supports.types ?? {}).map(([kind, versions]) => kind + ' ' + versions.join('/')).join(', '));
-    lines.push('  caps   : ' + Object.entries(interpreter.supports.capabilities ?? {}).map(([name, versions]) => name + ' ' + versions.join('/')).join(', '));
   }
+  const table = (source) => Object.entries(source ?? {}).map(([name, versions]) => name + '@' + versions.join('/')).join(' · ');
   lines.push('');
-  lines.push('平台整体支持：schema ' + (data.supports?.schema ?? []).join(', ') +
-    ' · ' + Object.keys(data.supports?.types ?? {}).length + ' 类型 · ' + Object.keys(data.supports?.capabilities ?? {}).length + ' 能力');
+  lines.push('平台支持类型：' + table(data.supports?.types));
+  lines.push('平台支持能力：' + table(data.supports?.capabilities));
   return lines.join('\n');
 }
 

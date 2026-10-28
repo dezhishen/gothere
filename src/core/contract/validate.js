@@ -124,6 +124,13 @@ export function validateDoc(input, options = {}) {
     if (entity.capabilities !== undefined && !isObject(entity.capabilities)) {
       fail('SCHEMA_INVALID', path + '.capabilities', 'capabilities 必须是对象：' + String(entity.id));
     }
+    if (isObject(entity.capabilities)) {
+      for (const [name, params] of Object.entries(entity.capabilities)) {
+        if (params !== false && params !== null && !isObject(params)) {
+          fail('SCHEMA_INVALID', path + '.capabilities.' + name, '能力参数必须是对象或 false（关闭）：' + String(entity.id));
+        }
+      }
+    }
   });
 
   const rawRules = Array.isArray(input.rules) ? input.rules : [];

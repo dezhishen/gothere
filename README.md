@@ -2,7 +2,7 @@
 
 一个轻松诙谐、以关卡数据驱动的 2D 环境解谜原型。主角是一个认准目的地就往前走的倔家伙；点击场景中的编号机关，或下方同名按钮，帮助他越过麻烦、到达目的地。
 
-最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成三关可玩原型、JSON 规则、确定性回放和手机浏览器试玩。
+最终目标：制作在 Steam 发行的原创解谜游戏与关卡创作工具。目前已完成四关可玩原型、JSON 规则、可注册的文档解释器与能力实现、确定性回放和手机浏览器试玩。
 
 ![游戏原型：旅行者、伸缩木桥和目的地旗帜](docs/images/gameplay.png)
 
@@ -61,7 +61,7 @@ pnpm build
 
 构建会先用 Tailwind 编译 `src/styles/app.css`，再把样式、脚本和地图打成单文件。
 
-生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和三张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
+生成 dist/gothere-play.html 和 dist/index.html，包含所有画面、样式、逻辑和四张地图。现代桌面浏览器可以直接打开 HTML 离线试玩，也可以将 dist/index.html 放到静态网站托管服务。手机优先使用 HTTPS 链接；不同系统的文件预览器对本地 HTML 执行的支持不同。
 
 ## 发布到 GitHub Pages
 
@@ -84,30 +84,40 @@ pnpm build
 
 - 点击「出发！」，然后轻点编号机关。机关按钮也可用键盘聚焦后操作。
 - 「暂停一下」停止时间；暂停时可单步前进。点击 1× 可切换 2×、4×。
-- 空格：开始/暂停；R：重置；1、2、3：切换关卡。焦点在按钮、输入框或对话框时保留原生键盘行为。
+- 空格：开始/暂停；R：重置；1～4：切换关卡。焦点在按钮、输入框或对话框时保留原生键盘行为。
 - 「回放本次」从头播放当前关卡已执行的操作。回放期间机关交互锁定。
 - 「需要一点提示？」显示本关的时序提示。
 - 「关卡数据」支持 JSON 编辑、文件导入、校验、加载、导出。加载无效数据不会替换当前关卡。
 
-## 三张关卡
+## 四张关卡
 
 1. 桥呢？桥呢！：开关改变木桥状态，验证点击和因果。
 2. 借过一下：风扇仅停 4 秒；踩下压力板后自动开门。
 3. 赶个巧：木桥保持 5 秒，风扇保持 4 秒，需要分时操作。
+4. 斧头与锤子：走过斧头会自动拿起（拿着就不扎脚），点一下放进身后的地面；
+   再拿起锤子点一下，木栅门才开。
 
-每张地图都可以不依赖画面运行，没有单独的关卡专用代码。
+关卡是 `levels/*.level.json` 内容制品，不参与编译；每张地图都可以不依赖画面运行，
+没有单独的关卡专用代码。
 
 ## 目录
 
 - `project.md`：项目愿景、架构与后续路线。
-- `src/core/schema.js`：第一版 JSON DSL 的结构、状态和引用校验。
-- `src/core/engine.js`：独立模拟、60 tick/秒、延迟动作、胜负、重置和确定性回放。
-- `src/levels.js`：三张手工关卡，全部使用相同的实体与动作。
+- `docs/design.md` / `docs/architecture.md`：平台与内容的边界、模块分层与里程碑。
+- `src/core/contract/`：类型与字段注册表、版本与支持矩阵、四层校验、编译、diff、PRNG、迁移。
+- `src/core/capabilities/`：能力实现单元（单击、延长地面、阻挡、区域、可持有、接触伤害），
+  每个能力自带 traits 与相位 hook，内核只按名字调度。
+- `src/core/kernel/`：固定 60 tick 推进、相位顺序、预算、快照与回放。
+- `src/core/interpreter/`：文档解释器注册表与 `level-1`（只负责 schemaVersion 1 的解析与运行）。
+- `src/app/`：用例层、内容源端口、错误码与 Agent skill 清单。
+- `levels/*.level.json` + `levels/manifest.json`：关卡内容制品。
+- `bin/gothere.mjs`：创作侧 CLI（`pnpm cli`）。
 - `src/styles/app.css`：Tailwind CSS v4 入口。设计令牌放在 `@theme`，组件类用 `@apply` 组合工具类；构建输出到 `src/style.css`（生成物，不入库）。
-- `src/scene.js`：Canvas 场景与原创程序绘制角色。
+- `src/scene.js`：Canvas 场景与原创程序绘制角色；未知类型走占位回退。
 - `src/main.js`：界面、输入、固定步长驱动和关卡数据面板。
-- `tests/`：核心行为、关卡解法、验证错误与 HTTP 测试。
-- `scripts/build.mjs`：无第三方运行时依赖的单文件打包。
+- `tests/`：契约、能力、解释器、用例、CLI、内容与 HTTP 测试。
+- `scripts/build.mjs`：无第三方运行时依赖的单文件打包，构建期校验并内联关卡。
+- `scripts/check-layers.mjs`：分层门禁（依赖只向下、能力实现必须是叶子模块）。
 - `scripts/css.mjs`：调用 Tailwind CLI 编译样式；`scripts/dev.mjs` 同时跑样式监听与开发服务器。
 - `scripts/browser.mjs`：端到端脚本共用的 Chromium 选择逻辑。
 - `scripts/share.mjs`：只转发单文件游戏的临时 HTTPS 试玩。
@@ -116,7 +126,7 @@ pnpm build
 
 当前空间为 1200×640，地面高度 440；角色只向右自动行走，speed 单位为世界单位/秒。地面由水平区间组成，桥延伸时补足地面。渲染器可以完全替换。
 
-实体类型：switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）。
+实体类型（预设）：switch（off/on）、bridge（folded/extended）、hazard（running/stopped）、gate（closed/open）、plate（idle/pressed）、axe 与 hammer（idle/held）。类型只是「能力组合 + 外观」的数据，行为住在 `src/core/capabilities/`；所以同一预设可以用 `capabilities: { "holdable": false }` 换个配置，不需要新类型。
 
 规则含 `on: { type: "click" | "enter", source: "entity-id" }`，可选 `if: [{entity, state}]`，和 `actions`。click 只接受开关或危险物；enter 只接受压力板。动作支持 `{type:"set",target,state}` 和 `{type:"after",ticks,actions}`。未知能力、非法引用、重复 ID 和错误状态会在加载前拒绝。
 

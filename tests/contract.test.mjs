@@ -7,7 +7,7 @@ import { migrate } from '../src/core/contract/migrate.js';
 import { createRng } from '../src/core/contract/prng.js';
 import { describe as describeType, eventsOfEntity, stateLabel } from '../src/core/contract/registry.js';
 import { validateDoc, validateLevel } from '../src/core/contract/validate.js';
-import { covers, mergeSupports, requirementsOf } from '../src/core/contract/versions.js';
+import { covers, platformSupports, requirementsOf } from '../src/core/contract/versions.js';
 import { levels } from './levels-fixture.mjs';
 
 const fixture = () => structuredClone(levels[0]);
@@ -20,8 +20,8 @@ test('registry describes types, capabilities and fields from a single table', ()
   assert.ok(described.fields.some((field) => field.key === 'x'));
   assert.equal(describeType('lift'), null);
   const all = describeType();
-  assert.ok(all.types.length >= 5);
-  assert.deepEqual(all.capabilities.map((item) => item.id).sort(), ['blockPath', 'clickable', 'extendGround', 'region']);
+  assert.ok(all.types.length >= 7);
+  assert.deepEqual(all.capabilities.map((item) => item.id).sort(), ['blockPath', 'clickable', 'damageOnContact', 'extendGround', 'holdable', 'region']);
 });
 
 test('capabilities are data: a preset can gain an event without new code', () => {
@@ -77,20 +77,19 @@ test('requirements and support matrices are matched per type version', () => {
   assert.deepEqual(coverage.gaps, [{ layer: 'type', name: 'bridge', required: 2, supported: [1] }]);
 });
 
-test('platform support is the union of every registered interpreter', () => {
-  const merged = mergeSupports([
-    { supports: { schema: [1], types: { a: [1] } } },
-    { supports: { schema: [2], types: { a: [2], b: [1] } } },
-  ]);
-  assert.deepEqual(merged.schema, [1, 2]);
-  assert.deepEqual(merged.types, { a: [1, 2], b: [1] });
+test('platform support multiplies interpreters, type data and capability implementations', () => {
+  const supports = platformSupports([{ supports: { schema: [1] } }, { supports: { schema: [1, 2] } }]);
+  assert.deepEqual(supports.schema, [1, 2]);
+  assert.deepEqual(supports.types.axe, [1]);
+  assert.deepEqual(supports.capabilities.holdable, [1]);
+  assert.equal(supports.types.wand, undefined, '数据里没有的类型就不是「能跑」的类型');
 });
 
 test('compileModel derives traits and normalizes width', () => {
   const model = compileModel(fixture());
   assert.equal(model.compiled, true);
   const bridge = model.entities.find((entity) => entity.id === 'bridge');
-  assert.equal(bridge.traits.extendsGroundInState, 'extended');
+  assert.equal(bridge.traits.groundInState, 'extended');
   assert.equal(bridge.width, 180);
   const lever = model.entities.find((entity) => entity.id === 'lever');
   assert.equal(lever.width, 28);

@@ -1,4 +1,4 @@
-import { stateLabel } from './core/contract/registry.js';
+import { eventsOfEntity, stateLabel, typeDescriptor } from './core/contract/registry.js';
 import { validateLevel } from './core/contract/validate.js';
 import { createGame, describePlatform, replayLevel } from './core/interpreter/registry.js';
 import { createDocSource, createTextSource } from './app/levelSource.js';
@@ -33,7 +33,7 @@ function renderTabs() {
     button.innerHTML = '<span class="tab-number"></span><span class="tab-copy"><span class="tab-title"></span><span class="tab-subtitle"></span></span>';
     button.querySelector('.tab-number').textContent = String(index + 1).padStart(2, '0');
     button.querySelector('.tab-title').textContent = item.name + (completed.has(item.id) ? ' ✓' : '');
-    button.querySelector('.tab-subtitle').textContent = subtitles[index];
+    button.querySelector('.tab-subtitle').textContent = subtitles[index] ?? 'SOMETHING IN THE WAY';
     button.addEventListener('click', () => loadLevel(item, index)); $('level-tabs').append(button);
   });
 }
@@ -47,12 +47,13 @@ function loadLevel(next, index = -1) {
   $('hint-text').hidden = true; $('hint').setAttribute('aria-expanded', 'false');
   $('hint').textContent = '需要一点提示？ ↗';
   $('hotspots').replaceChildren(); $('mechanism-actions').replaceChildren(); mechanismButtons.clear();
-  level.entities.filter((e) => ['switch', 'hazard'].includes(e.kind)).forEach((entity, index) => {
+  level.entities.filter((e) => eventsOfEntity(e).includes('click')).forEach((entity, index) => {
     const hotspot = document.createElement('button');
     hotspot.className = 'hotspot'; hotspot.dataset.entity = entity.id;
     hotspot.setAttribute('aria-label', '操作：' + entity.label);
     hotspot.style.left = ((entity.x + (entity.width ?? 28) / 2) / 1200 * 100) + '%';
-    hotspot.style.top = ((440 - (entity.kind === 'hazard' ? 135 : 91)) / 640 * 100) + '%';
+    const iconOffset = typeDescriptor(entity.kind)?.iconOffset ?? 91;
+    hotspot.style.top = ((440 - iconOffset) / 640 * 100) + '%';
     const number = document.createElement('span'); number.textContent = String(index + 1); hotspot.append(number);
     const label = document.createElement('span'); label.className = 'hotspot-label'; label.textContent = entity.label; hotspot.append(label);
     const action = document.createElement('button'); action.className = 'mechanism-action'; action.dataset.action = entity.id;
@@ -109,7 +110,10 @@ function updateHud(state) {
     const entity = state.entities[id];
     const enabled = running && !replay;
     buttons.hotspot.disabled = !enabled; buttons.action.disabled = !enabled;
-    buttons.hotspot.classList.toggle('active', ['on', 'stopped'].includes(entity.state));
+    // 被拿起的物体会跟着角色走，热点位置必须每帧重算，否则会留在原地。
+    buttons.hotspot.style.left = ((entity.x + entity.width / 2) / 1200 * 100) + '%';
+    const type = typeDescriptor(entity.kind);
+    buttons.hotspot.classList.toggle('active', type ? entity.state !== type.states[0].id : false);
     let label = entity.label + ' · ' + stateLabel(entity.state);
     const timer = state.timers.find((t) => t.actions.some((a) => a.type === 'set' && a.target === id));
     if (timer) label += ' · ' + Math.max(0, (timer.due - state.tick) / 60).toFixed(1) + 's';

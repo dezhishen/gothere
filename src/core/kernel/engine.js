@@ -1,12 +1,19 @@
-// 确定性内核：固定 60 tick 推进、能力 hook 顺序固定、预算超限即失败、快照深拷贝。
-// 只读已编译模型（core/contract/compile.js），不比对 kind 字符串、不碰 DOM 与墙钟。
+// 确定性内核：固定 60 tick 推进、相位顺序固定、预算超限即失败、快照深拷贝。
+// 它只读已编译模型，按「实体声明顺序 → 能力声明顺序」调度能力 hook，不认识任何具体能力。
 
+import { getCapability } from '../capabilities/index.js';
 import { compileModel } from '../contract/compile.js';
 import { LIMITS, MESSAGES, TICKS_PER_SECOND } from '../contract/constants.js';
 import { stateLabel } from '../contract/registry.js';
 import { validateDoc } from '../contract/validate.js';
 
 const clone = (value) => structuredClone(value);
+
+/**
+ * 相位顺序即语义：接触（区域 / 拾取 / 接触伤害）→ 支撑 → 阻挡 → 终点。
+ * 新增相位必须改这张表，并补一条 golden 回放回归。
+ */
+export const HOOK_PHASES = Object.freeze(['onContact', 'onBlock']);
 
 /** 未编译的输入一律先走 playable 全量校验，模型则直接运行。 */
 function modelOf(input) {
@@ -41,7 +48,7 @@ export function createSimulation(input) {
       tick: 0,
       status: 'ready',
       reason: null,
-      actor: { x: model.actor.x },
+      actor: { x: model.actor.x, holding: null },
       entities: Object.fromEntries(model.entities.map((entity) => [entity.id, { ...entity }])),
       events: [],
       clicks: 0,
@@ -91,7 +98,7 @@ export function createSimulation(input) {
     const spans = [
       ...model.platforms.map((platform) => [platform.x, platform.x + platform.width]),
       ...Object.values(state.entities)
-        .filter((entity) => entity.traits.extendsGroundInState !== null && entity.state === entity.traits.extendsGroundInState)
+        .filter((entity) => entity.traits.groundInState !== undefined && entity.state === entity.traits.groundInState)
         .map((entity) => [entity.x, entity.x + entity.width]),
     ].sort((a, b) => a[0] - b[0]);
     let covered = from;
@@ -102,6 +109,19 @@ export function createSimulation(input) {
       if (covered >= to) return true;
     }
     return false;
+  };
+
+  const runPhase = (phase, ctx) => {
+    for (const entity of Object.values(state.entities)) {
+      if (state.status !== 'running') return;
+      for (const [name, params] of Object.entries(entity.capabilities)) {
+        const capability = getCapability(name);
+        const hook = capability && capability.hooks ? capability.hooks[phase] : null;
+        if (typeof hook !== 'function') continue;
+        hook(ctx, entity, params);
+        if (state.status !== 'running') return;
+      }
+    }
   };
 
   const advance = () => {
@@ -130,16 +150,12 @@ export function createSimulation(input) {
     const from = state.actor.x;
     const to = Math.min(model.goal.x, Math.round((from + model.actor.speed / TICKS_PER_SECOND) * 1e6) / 1e6);
     state.actor.x = to;
+    // 所有能力共用同一套「触及」定义，避免拾取比伤害慢一个容差。
+    const overlaps = (entity, margin = 0) => to + margin >= entity.x && from - margin <= entity.x + entity.width;
+    const ctx = { state, world: model.world, from, to, overlaps, emit, lose, trigger };
 
-    // ④ 区域（踩板等）：能力声明进入区间时的状态迁移与事件
-    for (const entity of Object.values(state.entities)) {
-      const traits = entity.traits;
-      if (traits.enterFrom === null || entity.state !== traits.enterFrom) continue;
-      if (to < entity.x || from > entity.x + entity.width) continue;
-      entity.state = traits.enterTo;
-      emit(traits.enterMessage + entity.label);
-      trigger(traits.enterEvent, entity.id);
-    }
+    // ④ 接触类能力：区域（踩板）、拾取（可持有）、接触伤害
+    runPhase('onContact', ctx);
     if (state.status !== 'running') return;
 
     // ⑤ 支撑
@@ -148,14 +164,9 @@ export function createSimulation(input) {
       return;
     }
 
-    // ⑥ 阻挡
-    for (const entity of Object.values(state.entities)) {
-      if (to + 10 < entity.x || from - 10 > entity.x + entity.width) continue;
-      if (entity.traits.blocksInState !== null && entity.state === entity.traits.blocksInState) {
-        lose(entity.traits.blockReason, entity.traits.blockMessage);
-        return;
-      }
-    }
+    // ⑥ 阻挡类能力
+    runPhase('onBlock', ctx);
+    if (state.status !== 'running') return;
 
     // ⑦ 终点与超时
     if (to >= model.goal.x) {

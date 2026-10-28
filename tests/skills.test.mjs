@@ -42,7 +42,7 @@ test('skills.list publishes the platform and interpreter support matrix', () => 
   assert.equal(result.data.skills.length, listSkills().length);
   const platform = result.data.platform;
   assert.deepEqual(platform.supports.schema, [1]);
-  assert.equal(platform.interpreters[0].id, 'core-v1');
+  assert.equal(platform.interpreters[0].id, 'level-1');
   assert.ok(platform.supports.types.bridge.includes(1));
 });
 
@@ -58,7 +58,7 @@ test('level.validate passes builtin levels and reports broken geometry', () => {
   const ok = call('level.validate', { id: 'first-bridge' });
   assert.equal(ok.ok, true);
   assert.equal(ok.data.valid, true);
-  assert.equal(ok.data.interpreter.id, 'core-v1');
+  assert.equal(ok.data.interpreter.id, 'level-1');
 
   const broken = structuredClone(levels[0]);
   broken.platforms = [{ x: 0, width: 360 }];

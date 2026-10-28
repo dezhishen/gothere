@@ -24,7 +24,7 @@ test('the content manifest lists valid JSON level artifacts', async () => {
 test('every builtin level loads through the text source and maps to a summary', async () => {
   const source = createTextSource({ readText });
   const ids = await source.ids();
-  assert.deepEqual(ids, ['first-bridge', 'quiet-corner', 'just-in-time']);
+  assert.deepEqual(ids, ['first-bridge', 'quiet-corner', 'just-in-time', 'the-axe']);
   const list = await source.list();
   assert.deepEqual(Object.keys(list[0]).sort(), ['description', 'entities', 'id', 'name', 'rules', 'schemaVersion']);
   assert.equal(list[0].entities, 2);

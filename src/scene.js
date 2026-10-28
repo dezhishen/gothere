@@ -113,6 +113,30 @@ export function createRenderer(canvas) {
     rect(e.x,437,e.width,7,2,e.state==='pressed'?'#87956b':'#c2b386','#8f956a');
     for(let i=0;i<3;i++)line(e.x+8+i*10,439,e.x+11+i*10,441,e.state==='pressed'?'#cbd4a8':'#9d9974',1);
   }
+  // 拿在手里时模型会把物体的 x 贴到角色身旁，这里的倾斜只表达"被拿起来了"。
+  function axe(e) {
+    const x=e.x+e.width/2,held=e.state==='held';
+    if(!held)ellipse(x,441,20,4,0,'#849c6a22');
+    ctx.save();ctx.translate(x,440);if(held)ctx.rotate(-.45);
+    line(0,0,0,-44,'#b1946b',5);
+    path((p)=>{p.moveTo(-1,-48);p.quadraticCurveTo(-19,-53,-22,-38);p.quadraticCurveTo(-18,-23,-1,-28);p.closePath();},'#ccd0d6','#8f948b',1.5);
+    line(-19,-41,-19,-33,'#7f8a86',2);
+    ctx.restore();
+  }
+  function hammer(e) {
+    const x=e.x+e.width/2,held=e.state==='held';
+    if(!held)ellipse(x,441,17,4,0,'#849c6a22');
+    ctx.save();ctx.translate(x,440);if(held)ctx.rotate(-.4);
+    line(0,0,0,-38,'#b1946b',5);
+    rect(-14,-52,28,13,4,'#9ea7ad','#78838a');
+    line(-6,-49,6,-49,'#c3ccd1',2);
+    ctx.restore();
+  }
+  // 缺失渲染实现时的占位：画面降级，但校验与模拟不受影响。
+  function placeholder(e) {
+    rect(e.x,404,e.width,36,7,'#d9d3b7','#a3a97e');
+    ctx.save();ctx.textAlign='center';ctx.fillStyle='#6d7d5c';ctx.font='11px "Microsoft YaHei", sans-serif';ctx.fillText(e.label??'',e.x+e.width/2,392);ctx.restore();
+  }
   function destination(goal) {
     const x=goal.x,y=440;
     ellipse(x+13,y+6,69,9,0,'#849c6a22');
@@ -160,13 +184,18 @@ export function createRenderer(canvas) {
       background(time);
       tree(47,433,.9);tree(1170,435,.8);
       for(const p of level.platforms)platform(p);
-      for(const e of Object.values(snapshot.entities))if(e.kind==='bridge')bridge(e);
+      const isGround=(e)=>Boolean(e.traits)&&e.traits.groundInState!==undefined;
+      for(const e of Object.values(snapshot.entities))if(isGround(e))bridge(e);
       destination(level.goal);
       for(const e of Object.values(snapshot.entities)){
+        if(isGround(e))continue;
         if(e.kind==='switch')lever(e);
         else if(e.kind==='hazard')fan(e,snapshot.tick/60);
         else if(e.kind==='gate')gate(e);
         else if(e.kind==='plate')plate(e);
+        else if(e.kind==='axe')axe(e);
+        else if(e.kind==='hammer')hammer(e);
+        else placeholder(e);
       }
       walker(snapshot,time,fallAge,reducedMotion);
       // Foreground wildflowers, only on actual ground.

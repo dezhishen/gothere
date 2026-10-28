@@ -1,7 +1,9 @@
-// 版本与解释器支持矩阵：平台声明能解释哪些 schema / 类型 / 能力的哪些版本。
-// 纯函数，不认识任何上层；解释器的注册与选择在 core/interpreter/registry.js。
+// 版本与支持矩阵：纯函数，不认识任何上层。
+// 能力支持来自「已注册的能力实现」，类型支持来自「数据里的预设 × 能力是否实现」，
+// 文档解释器只声明它能读哪些 schemaVersion —— 三者相乘才是平台真正能跑的东西。
 
-import { CAPABILITIES, TYPES } from './registry.js';
+import { listCapabilities } from '../capabilities/index.js';
+import { TYPES } from './registry.js';
 
 export const SCHEMA_VERSION = 1;
 
@@ -30,16 +32,48 @@ export function requirementsOf(doc) {
     }
     const declared = entity.capabilities;
     if (declared && typeof declared === 'object' && !Array.isArray(declared)) {
-      for (const name of Object.keys(declared)) {
-        const version = CAPABILITIES[name] ? CAPABILITIES[name].version : 1;
-        capabilities[name] = Math.max(capabilities[name] ?? 0, version);
+      for (const [name, params] of Object.entries(declared)) {
+        if (params === false || params === null) continue;
+        const capability = listCapabilities().find((item) => item.id === name);
+        capabilities[name] = Math.max(capabilities[name] ?? 0, capability ? capability.version : 1);
       }
     }
   }
   return { schema, types, capabilities };
 }
 
-/** 一个解释器能否覆盖文档的全部版本要求；不覆盖时回报具体缺口。 */
+/** 已实现的能力 → 支持的版本。 */
+export function capabilityVersions() {
+  const out = {};
+  for (const capability of listCapabilities()) out[capability.id] = [capability.version];
+  return out;
+}
+
+/** 能跑的类型 → 支持的版本：数据里声明的类型，且它的每条能力都有实现。 */
+export function typeVersions() {
+  const implemented = new Set(listCapabilities().map((capability) => capability.id));
+  const out = {};
+  for (const [kind, type] of Object.entries(TYPES)) {
+    const missing = Object.keys(type.capabilities).filter((name) => !implemented.has(name));
+    if (missing.length === 0) out[kind] = [type.version];
+  }
+  return out;
+}
+
+/** 平台对外支持集：解释器声明能读的 schema × 数据里的类型 × 已实现的能力。 */
+export function platformSupports(interpreters) {
+  const schema = new Set();
+  for (const interpreter of interpreters) {
+    for (const version of interpreter.supports?.schema ?? []) schema.add(version);
+  }
+  return {
+    schema: [...schema].sort((a, b) => a - b),
+    types: typeVersions(),
+    capabilities: capabilityVersions(),
+  };
+}
+
+/** 一组支持声明能否覆盖文档的全部版本要求；不覆盖时回报具体缺口。 */
 export function covers(supports, requirements) {
   const gaps = [];
   const schema = supports && Array.isArray(supports.schema) ? supports.schema : [];
@@ -58,41 +92,6 @@ function collectGaps(gaps, layer, table, required) {
       gaps.push({ layer, name, required: version, supported: [...list] });
     }
   }
-}
-
-/** 平台整体支持集：多个解释器声明取并集。主线程用它对外暴露。 */
-export function mergeSupports(interpreters) {
-  const schema = new Set();
-  const types = new Map();
-  const capabilities = new Map();
-  for (const interpreter of interpreters) {
-    const supports = interpreter && interpreter.supports;
-    if (!supports) continue;
-    for (const version of supports.schema ?? []) schema.add(version);
-    addVersions(types, supports.types);
-    addVersions(capabilities, supports.capabilities);
-  }
-  return {
-    schema: [...schema].sort((a, b) => a - b),
-    types: tableToObject(types),
-    capabilities: tableToObject(capabilities),
-  };
-}
-
-function addVersions(table, source) {
-  if (!source) return;
-  for (const [name, versions] of Object.entries(source)) {
-    if (!table.has(name)) table.set(name, new Set());
-    for (const version of versions) table.get(name).add(version);
-  }
-}
-
-function tableToObject(table) {
-  const out = {};
-  for (const name of [...table.keys()].sort()) {
-    out[name] = [...table.get(name)].sort((a, b) => a - b);
-  }
-  return out;
 }
 
 /** 人类可读的版本要求，用在错误文案里。 */

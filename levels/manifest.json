@@ -12,6 +12,10 @@
     {
       "id": "just-in-time",
       "file": "just-in-time.level.json"
+    },
+    {
+      "id": "the-axe",
+      "file": "the-axe.level.json"
     }
   ]
 }

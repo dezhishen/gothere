@@ -1,6 +1,6 @@
 // 文档 → 内核模型。解析器在完成四层校验后调用它：此后内核只读模型，不再看 kind 字符串。
 
-import { traitsOfEntity, typeDescriptor } from './registry.js';
+import { capabilitiesOfEntity, traitsOfEntity, typeDescriptor } from './registry.js';
 
 export function compileModel(doc) {
   const platforms = doc.platforms.map((platform) => Object.freeze({
@@ -9,6 +9,7 @@ export function compileModel(doc) {
   }));
   const entities = doc.entities.map((entity) => {
     const type = typeDescriptor(entity.kind);
+    const capabilities = capabilitiesOfEntity(entity);
     return Object.freeze({
       id: entity.id,
       kind: entity.kind,
@@ -17,6 +18,7 @@ export function compileModel(doc) {
       x: entity.x,
       width: entity.width === undefined ? type.defaultWidth : entity.width,
       state: entity.state,
+      capabilities: Object.freeze({ ...capabilities }),
       traits: traitsOfEntity(entity),
     });
   });
